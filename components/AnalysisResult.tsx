@@ -1,0 +1,160 @@
+
+import React, { useState, useMemo, useEffect } from 'react';
+import { AnalysisResponse } from '../types';
+import ItemCard from './ItemCard';
+import { CheckCircleIcon, XCircleIcon, QuestionMarkCircleIcon, ExclamationTriangleIcon } from './icons/ResultIcons';
+import { TagIcon, BoxIcon, CategoryIcon } from './icons/DetailIcons';
+import { SuggestionIcon } from './icons/SuggestionIcon';
+
+interface AnalysisResultProps {
+  data: AnalysisResponse;
+  allergies: string[];
+}
+
+const AnalysisResult: React.FC<AnalysisResultProps> = ({ data, allergies }) => {
+  const [themeColor, setThemeColor] = useState('teal');
+
+  useEffect(() => {
+    const category = data.فئة_المنتج?.toLowerCase() || '';
+    if (category.includes('تجميل') || category.includes('بشرة') || category.includes('عناية')) {
+      setThemeColor('pink');
+    } else if (category.includes('طعام') || category.includes('غذائي') || category.includes('مشروب') || category.includes('natural')) {
+      setThemeColor('green');
+    } else {
+      setThemeColor('teal');
+    }
+  }, [data.فئة_المنتج]);
+
+  const hasDetails = (data.العلامة_التجارية && data.العلامة_التجارية !== 'غير واضح') || 
+                     (data.الحجم_او_الوزن && data.الحجم_او_الوزن !== 'غير واضح') || 
+                     (data.فئة_المنتج && data.فئة_المنتج !== 'غير واضح');
+
+  const tabs = useMemo(() => [
+    { id: 'positive', title: 'إيجابي', icon: <CheckCircleIcon />, data: data.المكونات_الإيجابية },
+    { id: 'negative', title: 'سلبي', icon: <XCircleIcon />, data: data.المكونات_السلبية },
+    { id: 'questionable', title: 'مشكوك فيه', icon: <QuestionMarkCircleIcon />, data: data.المكونات_المشكوك_فيها },
+    { id: 'marketing', title: 'تسويقي', icon: <ExclamationTriangleIcon />, data: data.الممارسات_التسويقية_الخادعة },
+  ].filter(tab => tab.data && tab.data.length > 0), [data]);
+
+  const [activeTab, setActiveTab] = useState(tabs.length > 0 ? tabs[0].id : null);
+  const activeTabData = tabs.find(tab => tab.id === activeTab);
+
+  const colorStyles = {
+    teal: { text: 'text-teal-500 dark:text-teal-400', glow: '[--glow-color:theme(colors.teal.500)]' },
+    green: { text: 'text-green-500 dark:text-green-400', glow: '[--glow-color:theme(colors.green.500)]' },
+    pink: { text: 'text-pink-500 dark:text-pink-400', glow: '[--glow-color:theme(colors.pink.500)]' },
+  };
+  const currentColors = colorStyles[themeColor] || colorStyles.teal;
+  const mainGlowStyle = `shadow-2xl shadow-slate-400/30 dark:shadow-black/50 dark:[box-shadow:0_0_50px_-12px_var(--glow-color)]`;
+
+  return (
+    <div className={`w-full max-w-4xl p-4 sm:p-6 bg-slate-200/80 dark:bg-black/30 backdrop-blur-md rounded-2xl border border-slate-300/50 dark:border-gray-700/50 ${mainGlowStyle} ${currentColors.glow}`}>
+      <div className="text-center mb-6">
+        <h2 className={`text-4xl font-bold ${currentColors.text} [text-shadow:0_0_15px_var(--glow-color)]`}>{data.اسم_المنتج}</h2>
+        
+        {hasDetails && (
+          <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2 text-gray-700 dark:text-gray-300">
+            {data.العلامة_التجارية && data.العلامة_التجارية !== 'غير واضح' && (
+              <div className="flex items-center gap-2 bg-slate-300/50 dark:bg-gray-800/50 px-3 py-1 rounded-full border border-slate-400/50 dark:border-gray-600/50">
+                <TagIcon className="h-5 w-5" />
+                <span className="text-sm font-medium">{data.العلامة_التجارية}</span>
+              </div>
+            )}
+            {data.الحجم_او_الوزن && data.الحجم_او_الوزن !== 'غير واضح' && (
+              <div className="flex items-center gap-2 bg-slate-300/50 dark:bg-gray-800/50 px-3 py-1 rounded-full border border-slate-400/50 dark:border-gray-600/50">
+                <BoxIcon className="h-5 w-5" />
+                <span className="text-sm font-medium">{data.الحجم_او_الوزن}</span>
+              </div>
+            )}
+            {data.فئة_المنتج && data.فئة_المنتج !== 'غير واضح' && (
+               <div className="flex items-center gap-2 bg-slate-300/50 dark:bg-gray-800/50 px-3 py-1 rounded-full border border-slate-400/50 dark:border-gray-600/50">
+                <CategoryIcon className="h-5 w-5" />
+                <span className="text-sm font-medium">{data.فئة_المنتج}</span>
+              </div>
+            )}
+          </div>
+        )}
+        <p className="mt-4 text-gray-700 dark:text-gray-300">{data.ملخص_التحليل}</p>
+      </div>
+      
+      {tabs.length > 0 && activeTab && (
+        <div className="mt-6">
+          <div className="flex sm:space-x-2 justify-center overflow-x-auto border-b border-slate-300 dark:border-gray-700">
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              const tabColorClasses = {
+                positive: { text: 'text-green-600 dark:text-green-400', glow: '[--tab-glow-color:theme(colors.green.500)]', border: 'border-green-500' },
+                negative: { text: 'text-red-600 dark:text-red-400', glow: '[--tab-glow-color:theme(colors.red.500)]', border: 'border-red-500' },
+                questionable: { text: 'text-yellow-600 dark:text-yellow-400', glow: '[--tab-glow-color:theme(colors.yellow.500)]', border: 'border-yellow-500' },
+                marketing: { text: 'text-orange-600 dark:text-orange-400', glow: '[--tab-glow-color:theme(colors.orange.500)]', border: 'border-orange-500' },
+              };
+              const currentTabColors = tabColorClasses[tab.id];
+
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    whitespace-nowrap 
+                    group inline-flex items-center gap-2 py-3 px-4 font-semibold text-sm 
+                    focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 focus-visible:ring-teal-500
+                    transition-all duration-200 ease-in-out border-b-2
+                    ${isActive
+                      ? `${currentTabColors.text} ${currentTabColors.glow} ${currentTabColors.border} [text-shadow:0_0_8px_var(--tab-glow-color)]`
+                      : `text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white border-transparent`
+                    }
+                  `}
+                >
+                  {React.cloneElement(tab.icon, { className: `h-5 w-5 transition-transform duration-200 ${isActive ? 'dark:[filter:drop-shadow(0_0_3px_var(--tab-glow-color))]' : 'group-hover:scale-110'}` })}
+                  <span>{tab.title}</span>
+                  <span className={`hidden sm:inline-block ml-1 py-0.5 px-2.5 rounded-full text-xs font-bold transition-colors duration-200 ${
+                      isActive ? 'bg-black/20 text-gray-300' : 'bg-slate-300 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                  }`}>
+                    {tab.data.length}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          <div className="rounded-b-lg animate-fade-in">
+             {activeTabData && (
+                <div className="py-4 space-y-2">
+                    {activeTabData.data.map((item, index) => (
+                        <ItemCard key={index} item={item} themeColor={themeColor} allergies={allergies} />
+                    ))}
+                </div>
+             )}
+          </div>
+        </div>
+      )}
+      
+      {data.اقتراحات_بديلة && data.اقتراحات_بديلة.length > 0 && (
+          <div className="mt-6">
+              <h3 className={`text-xl font-bold ${currentColors.text} mb-2 flex items-center gap-2 justify-center [text-shadow:0_0_8px_var(--glow-color)]`}>
+                <SuggestionIcon className="h-6 w-6" />
+                اقتراحات ذكية
+              </h3>
+              <div className="p-4 bg-slate-50 dark:bg-gray-900/50 rounded-lg border border-slate-300 dark:border-gray-700 space-y-3">
+                {data.اقتراحات_بديلة.map((suggestion, index) => (
+                    <div key={index} className="p-3 bg-slate-200/50 dark:bg-black/20 rounded-md">
+                        <p className="font-bold text-gray-800 dark:text-gray-100">{suggestion.اسم_المنتج_البديل}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{suggestion.السبب}</p>
+                    </div>
+                ))}
+              </div>
+          </div>
+      )}
+        
+      {data.ملاحظات_إضافية && (
+          <div className="mt-6">
+              <h3 className={`text-xl font-bold ${currentColors.text} mb-2 [text-shadow:0_0_8px_var(--glow-color)]`}>ملاحظات إضافية</h3>
+              <div className="p-4 bg-slate-50 dark:bg-gray-900/50 rounded-lg text-gray-700 dark:text-gray-300 border border-slate-300 dark:border-gray-700">
+                <p>{data.ملاحظات_إضافية}</p>
+              </div>
+          </div>
+      )}
+    </div>
+  );
+};
+
+export default AnalysisResult;
