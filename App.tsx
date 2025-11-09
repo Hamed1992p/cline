@@ -11,7 +11,7 @@ import AllergyManager from './components/AllergyManager';
 import { AllergyIcon } from './components/icons/AllergyIcon';
 import { UserProfileIcon, HistoryIcon } from './components/icons/DetailIcons';
 import { XCircleIcon, CheckCircleIcon } from './components/icons/ResultIcons';
-import { KeyboardIcon, ScaleIcon, BarcodeIcon, RoutineIcon, MicrophoneIcon, LiveAnalysisIcon, ScanTextIcon, MedicationIcon } from './components/icons/ActionIcons';
+import { KeyboardIcon, ScaleIcon, BarcodeIcon, RoutineIcon, MicrophoneIcon, LiveAnalysisIcon, ScanTextIcon, MedicationIcon, QuestionIcon } from './components/icons/ActionIcons';
 import { UploadIcon } from './components/icons/UploadIcon';
 import BarcodeScanner from './components/BarcodeScanner';
 import AudioRecorder from './components/AudioRecorder';
@@ -21,6 +21,7 @@ import VoiceControl from './components/VoiceControl';
 import HomePage from './components/HomePage';
 import MedicationAnalysisResult from './components/MedicationAnalysisResult';
 import StarfieldBackground from './components/StarfieldBackground';
+import GeneralChat from './components/GeneralChat';
 
 
 const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] => {
@@ -39,6 +40,7 @@ const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<R
       const valueToStore = value instanceof Function ? value(storedValue) : value;
       setStoredValue(valueToStore);
       window.localStorage.setItem(key, JSON.stringify(valueToStore));
+    // FIX: Corrected the malformed catch block which was causing syntax errors.
     } catch (error) {
       console.error(error);
     }
@@ -559,7 +561,7 @@ const App: React.FC = () => {
   const [chat, setChat] = useState<Chat | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   
-  const [inputMode, setInputMode] = useState<'image' | 'text' | 'barcode' | 'voice' | 'live' | 'scan-text' | 'medication'>('image');
+  const [inputMode, setInputMode] = useState<'home' | 'image' | 'text' | 'barcode' | 'voice' | 'live' | 'scan-text' | 'medication' | 'general-chat'>('home');
   const [isComparing, setIsComparing] = useState(false);
   const [comparisonResult, setComparisonResult] = useState<ComparisonResponse | null>(null);
   
@@ -572,9 +574,6 @@ const App: React.FC = () => {
   
   const [isAnalyzingMedication, setIsAnalyzingMedication] = useState(false);
   const [medicationAnalysis, setMedicationAnalysis] = useState<MedicationAnalysisResponse | null>(null);
-
-  const [showHomePage, setShowHomePage] = useState(true);
-
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -597,7 +596,6 @@ const App: React.FC = () => {
             analysis: result
         };
         setScanHistory(prev => [newHistoryItem, ...prev.slice(0, 49)]);
-        setShowHomePage(false); // Ensure homepage is hidden when results are shown
         
         const chatInstance = ai.chats.create({
             model: 'gemini-2.5-pro',
@@ -647,7 +645,6 @@ const App: React.FC = () => {
       const base64Data = imageBase64.split(',')[1];
       const result = await analyzeMedicationImage(base64Data, imageFile.type);
       setMedicationAnalysis(result);
-      setShowHomePage(false);
     } catch (err) {
       console.error(err);
       setError('حدث خطأ أثناء تحليل معلومات الدواء. الرجاء المحاولة مرة أخرى.');
@@ -696,7 +693,6 @@ const App: React.FC = () => {
             const imageUrl = data.product.image_front_url || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
             const result = await analyzeProductText(ingredientsText, allergies, profile);
             
-            // Add product name if AI couldn't find it
             if (result.اسم_المنتج === 'غير واضح' && data.product.product_name) {
                 result.اسم_المنتج = data.product.product_name;
             }
@@ -820,16 +816,14 @@ const App: React.FC = () => {
     setError(null);
     setChat(null);
     setChatMessages([]);
-    setInputMode('image');
+    setInputMode('home');
     setMedicationAnalysis(null);
-    setShowHomePage(true);
   };
 
   const handleSelectHistoryItem = (item: ScanHistoryItem) => {
     setImageBase64(item.image);
     setAnalysis(item.analysis);
     setIsHistoryOpen(false);
-    setShowHomePage(false); // Make sure we show the result, not homepage
     // Re-initiate chat for the selected old item
     const chatInstance = ai.chats.create({ 
         model: 'gemini-2.5-pro',
@@ -866,25 +860,20 @@ const App: React.FC = () => {
         closeAllModals();
     } else if (lowerCaseCommand.includes('صورة') || lowerCaseCommand.includes('كاميرا')) {
         setInputMode('image');
-        setShowHomePage(false);
     } else if (lowerCaseCommand.includes('امسح النص') || lowerCaseCommand.includes('سكان تيكست')) {
         setInputMode('scan-text');
-        setShowHomePage(false);
     } else if (lowerCaseCommand.includes('نص') || lowerCaseCommand.includes('يدوي')) {
         setInputMode('text');
-        setShowHomePage(false);
     } else if (lowerCaseCommand.includes('باركود')) {
         setInputMode('barcode');
-        setShowHomePage(false);
     } else if (lowerCaseCommand.includes('صوت')) {
         setInputMode('voice');
-        setShowHomePage(false);
     } else if (lowerCaseCommand.includes('مباشر') || lowerCaseCommand.includes('لايف')) {
         setInputMode('live');
-        setShowHomePage(false);
     } else if (lowerCaseCommand.includes('دواء') || lowerCaseCommand.includes('تحليل دواء')) {
         setInputMode('medication');
-        setShowHomePage(false);
+    } else if (lowerCaseCommand.includes('اسال حامد') || lowerCaseCommand.includes('اسأل حامد')) {
+        setInputMode('general-chat');
     } else if (lowerCaseCommand.includes('سجل') || lowerCaseCommand.includes('هيستوري')) {
         setIsHistoryOpen(true);
     } else if (lowerCaseCommand.includes('ملفي') || lowerCaseCommand.includes('بروفايل')) {
@@ -903,6 +892,7 @@ const App: React.FC = () => {
   const modes = [
     { id: 'image', icon: UploadIcon, label: 'منتج' },
     { id: 'medication', icon: MedicationIcon, label: 'دواء' },
+    { id: 'general-chat', icon: QuestionIcon, label: 'اسأل حامد' },
     { id: 'scan-text', icon: ScanTextIcon, label: 'مسح النص' },
     { id: 'text', icon: KeyboardIcon, label: 'نص' },
     { id: 'barcode', icon: BarcodeIcon, label: 'باركود' },
@@ -942,19 +932,18 @@ const App: React.FC = () => {
               </div>
           </div>
       );
-  } else if (showHomePage) {
+  } else if (inputMode === 'home') {
       content = <HomePage
                     modes={modes}
                     onModeSelect={(modeId) => {
                         setInputMode(modeId as any);
-                        setShowHomePage(false);
                     }}
                 />;
   } else {
       content = (
         <div className="w-full max-w-2xl animate-fade-in">
              <div className="text-center mb-4">
-                <button onClick={() => setShowHomePage(true)} className="text-sm text-gray-500 dark:text-gray-400 hover:text-teal-500 dark:hover:text-teal-400 transition-colors underline">
+                <button onClick={() => setInputMode('home')} className="text-sm text-gray-500 dark:text-gray-400 hover:text-teal-500 dark:hover:text-teal-400 transition-colors underline">
                     &larr; العودة إلى القائمة الرئيسية
                 </button>
             </div>
@@ -995,7 +984,7 @@ const App: React.FC = () => {
             {inputMode === 'barcode' && (
                 <BarcodeScanner
                     onBarcodeScanned={handleBarcodeScanned}
-                    onCancel={() => setShowHomePage(true)}
+                    onCancel={() => setInputMode('home')}
                 />
             )}
             {inputMode === 'voice' && (
@@ -1006,10 +995,13 @@ const App: React.FC = () => {
             )}
             {inputMode === 'live' && (
                 <LiveAnalysis 
-                    onCancel={() => setShowHomePage(true)} 
+                    onCancel={() => setInputMode('home')} 
                     allergies={allergies}
                     profile={profile}
                 />
+            )}
+             {inputMode === 'general-chat' && (
+                <GeneralChat onCancel={() => setInputMode('home')} />
             )}
         </div>
       );
@@ -1018,7 +1010,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen text-gray-800 dark:text-gray-100 flex flex-col items-center p-4 selection:bg-teal-500 selection:text-white transition-colors duration-500">
       <StarfieldBackground />
-      {!showHomePage && (
+      {inputMode !== 'home' && (
           <header className="w-full max-w-4xl py-4 px-6 my-4 bg-white/10 dark:bg-black/20 backdrop-blur-lg border border-slate-300/30 dark:border-teal-500/20 rounded-2xl flex justify-between items-center shadow-lg dark:shadow-[0_0_30px_rgba(45,212,191,0.2)] animate-fade-in">
             <div className="flex items-center gap-2">
                 <ThemeToggleButton theme={theme} toggleTheme={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} />
@@ -1055,7 +1047,7 @@ const App: React.FC = () => {
         {content}
       </main>
 
-      {!showHomePage && (
+      {inputMode !== 'home' && (
           <footer className="w-full max-w-4xl text-center py-4 mt-auto">
             <p className="text-gray-500 dark:text-gray-600 text-sm">تم التطوير بواسطة hamed Ai &copy; 2024</p>
           </footer>

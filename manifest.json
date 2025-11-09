@@ -1,0 +1,21 @@
+{
+  "short_name": "Hamed AI",
+  "name": "Hamed AI – Lens of Health & Beauty",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/google-gemini-v2/prompt_gallery_assets/main/demos/hamed-ai/icon-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/google-gemini-v2/prompt_gallery_assets/main/demos/hamed-ai/icon-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#020617",
+  "background_color": "#020617",
+  "description": "An application that analyzes food or cosmetic product ingredients from an image using AI, providing a detailed breakdown of positive, negative, and questionable components."
+}
