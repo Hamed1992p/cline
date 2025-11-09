@@ -1,7 +1,8 @@
 {
-  "name": "hamed Ai",
+  "name": " hamed Ai ",
   "description": "An application that analyzes food or cosmetic product ingredients from an image using AI, providing a detailed breakdown of positive, negative, and questionable components.",
   "requestFramePermissions": [
-    "camera"
+    "camera",
+    "microphone"
   ]
 }

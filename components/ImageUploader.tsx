@@ -9,9 +9,11 @@ interface ImageUploaderProps {
   imagePreviewUrl: string | null;
   isLoading: boolean;
   hasImage: boolean;
+  promptText: string;
+  subPromptText: string;
 }
 
-const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageSelect, onAnalyzeClick, imagePreviewUrl, isLoading, hasImage }) => {
+const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageSelect, onAnalyzeClick, imagePreviewUrl, isLoading, hasImage, promptText, subPromptText }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,8 +47,8 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageSelect, onAnalyzeC
         {!imagePreviewUrl && (
           <div className="text-center text-gray-500 dark:text-gray-400">
             <UploadIcon className="w-16 h-16 mx-auto mb-2 text-gray-400 dark:text-gray-500 transition-colors group-hover:text-teal-500" />
-            <p className="font-semibold">انقر هنا لرفع صورة</p>
-            <p className="text-sm">أو التقط صورة للمكونات</p>
+            <p className="font-semibold">{promptText}</p>
+            <p className="text-sm">{subPromptText}</p>
           </div>
         )}
          {imagePreviewUrl && (

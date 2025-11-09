@@ -1,17 +1,65 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
-import { AnalysisResponse } from '../types';
+import { AnalysisResponse, ChatMessage } from '../types';
 import ItemCard from './ItemCard';
 import { CheckCircleIcon, XCircleIcon, QuestionMarkCircleIcon, ExclamationTriangleIcon } from './icons/ResultIcons';
-import { TagIcon, BoxIcon, CategoryIcon } from './icons/DetailIcons';
+import { TagIcon, BoxIcon, CategoryIcon, ShareIcon } from './icons/DetailIcons';
 import { SuggestionIcon } from './icons/SuggestionIcon';
+import ChatFollowUp from './ChatFollowUp';
 
 interface AnalysisResultProps {
   data: AnalysisResponse;
   allergies: string[];
+  chatMessages: ChatMessage[];
+  onSendMessage: (message: string) => void;
 }
 
-const AnalysisResult: React.FC<AnalysisResultProps> = ({ data, allergies }) => {
+const ScoreDisplay: React.FC<{ score: { النقاط: number; التقييم: string; السبب: string; }, color: string }> = ({ score, color }) => {
+    const scoreColor = score.النقاط >= 85 ? 'text-green-400' : score.النقاط >= 60 ? 'text-yellow-400' : 'text-red-400';
+    const circumference = 2 * Math.PI * 50; // Circumference of the circle
+    const offset = circumference - (score.النقاط / 100) * circumference;
+
+    return (
+        <div className={`relative w-full p-4 grid grid-cols-1 md:grid-cols-3 items-center gap-4 rounded-xl bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-${color}-500/30 shadow-inner`}>
+            <div className="relative w-40 h-40 mx-auto flex items-center justify-center">
+                <svg className="absolute w-full h-full" viewBox="0 0 120 120">
+                    <circle
+                        className="text-slate-300 dark:text-gray-700"
+                        strokeWidth="10"
+                        stroke="currentColor"
+                        fill="transparent"
+                        r="50"
+                        cx="60"
+                        cy="60"
+                    />
+                    <circle
+                        className={scoreColor}
+                        strokeWidth="10"
+                        strokeDasharray={circumference}
+                        strokeDashoffset={offset}
+                        strokeLinecap="round"
+                        stroke="currentColor"
+                        fill="transparent"
+                        r="50"
+                        cx="60"
+                        cy="60"
+                        transform="rotate(-90 60 60)"
+                        style={{ transition: 'stroke-dashoffset 1s ease-out' }}
+                    />
+                </svg>
+                <div className="text-center">
+                    <span className={`text-5xl font-bold ${scoreColor}`}>{score.التقييم}</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">({score.النقاط}/100)</span>
+                </div>
+            </div>
+            <p className="md:col-span-2 text-center md:text-right text-gray-700 dark:text-gray-300">
+                <strong className={`font-semibold ${scoreColor}`}>الخلاصة:</strong> {score.السبب}
+            </p>
+        </div>
+    );
+};
+
+
+const AnalysisResult: React.FC<AnalysisResultProps> = ({ data, allergies, chatMessages, onSendMessage }) => {
   const [themeColor, setThemeColor] = useState('teal');
 
   useEffect(() => {
@@ -24,6 +72,22 @@ const AnalysisResult: React.FC<AnalysisResultProps> = ({ data, allergies }) => {
       setThemeColor('teal');
     }
   }, [data.فئة_المنتج]);
+  
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `تحليل منتج: ${data.اسم_المنتج}`,
+          text: `هذا ملخص تحليل لمنتج "${data.اسم_المنتج}" من Hamed AI:\n\nالتقييم: ${data.التقييم_العام?.التقييم} (${data.التقييم_العام?.النقاط}/100)\nالملخص: ${data.ملخص_التحليل}`,
+          url: window.location.href,
+        });
+      } catch (error) {
+        console.error('خطأ في مشاركة المحتوى:', error);
+      }
+    } else {
+      alert('المشاركة غير مدعومة في هذا المتصفح.');
+    }
+  };
 
   const hasDetails = (data.العلامة_التجارية && data.العلامة_التجارية !== 'غير واضح') || 
                      (data.الحجم_او_الوزن && data.الحجم_او_الوزن !== 'غير واضح') || 
@@ -49,9 +113,16 @@ const AnalysisResult: React.FC<AnalysisResultProps> = ({ data, allergies }) => {
 
   return (
     <div className={`w-full max-w-4xl p-4 sm:p-6 bg-slate-200/80 dark:bg-black/30 backdrop-blur-md rounded-2xl border border-slate-300/50 dark:border-gray-700/50 ${mainGlowStyle} ${currentColors.glow}`}>
-      <div className="text-center mb-6">
-        <h2 className={`text-4xl font-bold ${currentColors.text} [text-shadow:0_0_15px_var(--glow-color)]`}>{data.اسم_المنتج}</h2>
-        
+      <div className="flex justify-between items-start mb-6">
+        <div className="text-center flex-grow">
+          <h2 className={`text-4xl font-bold ${currentColors.text} [text-shadow:0_0_15px_var(--glow-color)]`}>{data.اسم_المنتج}</h2>
+        </div>
+        <button onClick={handleShare} className="p-2 rounded-full bg-slate-300/50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-slate-400/50 dark:hover:bg-gray-600/50 transition-colors duration-300" aria-label="مشاركة التحليل">
+          <ShareIcon className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="text-center mb-6 -mt-4">
         {hasDetails && (
           <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2 text-gray-700 dark:text-gray-300">
             {data.العلامة_التجارية && data.العلامة_التجارية !== 'غير واضح' && (
@@ -76,6 +147,13 @@ const AnalysisResult: React.FC<AnalysisResultProps> = ({ data, allergies }) => {
         )}
         <p className="mt-4 text-gray-700 dark:text-gray-300">{data.ملخص_التحليل}</p>
       </div>
+
+      {data.التقييم_العام && (
+        <div className="my-6">
+            <h3 className={`text-xl font-bold ${currentColors.text} mb-2 text-center [text-shadow:0_0_8px_var(--glow-color)]`}>التقييم العام</h3>
+            <ScoreDisplay score={data.التقييم_العام} color={themeColor} />
+        </div>
+      )}
       
       {tabs.length > 0 && activeTab && (
         <div className="mt-6">
@@ -153,6 +231,9 @@ const AnalysisResult: React.FC<AnalysisResultProps> = ({ data, allergies }) => {
               </div>
           </div>
       )}
+      
+      <ChatFollowUp messages={chatMessages} onSendMessage={onSendMessage} />
+
     </div>
   );
 };
