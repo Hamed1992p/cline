@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback, useEffect, ReactNode } from 'react';
-import { AnalysisResponse, UserProfile, ScanHistoryItem, ChatMessage, ComparisonResponse, Routine, RoutineProduct, RoutineAnalysis, MedicationAnalysisResponse } from './types';
-import { analyzeProductImage, analyzeProductText, compareProducts, analyzeRoutine, analyzeMedicationImage, ai } from './services/geminiService';
+import { AnalysisResponse, UserProfile, ScanHistoryItem, ChatMessage, ComparisonResponse, Routine, RoutineProduct, RoutineAnalysis, MedicationAnalysisResponse, MealAnalysisResponse } from './types';
+import { analyzeProductImage, analyzeProductText, compareProducts, analyzeRoutine, analyzeMedicationImage, analyzeMealImage, ai } from './services/geminiService';
 import { Chat } from '@google/genai';
 import ImageUploader from './components/ImageUploader';
 import AnalysisResult from './components/AnalysisResult';
@@ -11,7 +11,7 @@ import AllergyManager from './components/AllergyManager';
 import { AllergyIcon } from './components/icons/AllergyIcon';
 import { UserProfileIcon, HistoryIcon } from './components/icons/DetailIcons';
 import { XCircleIcon, CheckCircleIcon } from './components/icons/ResultIcons';
-import { KeyboardIcon, ScaleIcon, BarcodeIcon, RoutineIcon, MicrophoneIcon, LiveAnalysisIcon, ScanTextIcon, MedicationIcon, QuestionIcon } from './components/icons/ActionIcons';
+import { KeyboardIcon, ScaleIcon, BarcodeIcon, RoutineIcon, MicrophoneIcon, LiveAnalysisIcon, ScanTextIcon, MedicationIcon, QuestionIcon, FutureIcon, MealIcon } from './components/icons/ActionIcons';
 import { UploadIcon } from './components/icons/UploadIcon';
 import BarcodeScanner from './components/BarcodeScanner';
 import AudioRecorder from './components/AudioRecorder';
@@ -20,8 +20,11 @@ import TextScanner from './components/TextScanner';
 import VoiceControl from './components/VoiceControl';
 import HomePage from './components/HomePage';
 import MedicationAnalysisResult from './components/MedicationAnalysisResult';
+import MealAnalysisResult from './components/MealAnalysisResult';
 import StarfieldBackground from './components/StarfieldBackground';
 import GeneralChat from './components/GeneralChat';
+import Notification from './components/Notification';
+import FutureFeaturesModal from './components/FutureFeaturesModal';
 
 
 const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] => {
@@ -249,7 +252,7 @@ const ScanHistory: React.FC<ScanHistoryProps> = ({ history, onSelect, onClear, o
 // =================================================================================
 // EngagingLoader Component
 // =================================================================================
-const EngagingLoader: React.FC<{isComparing?: boolean; isRoutine?: boolean; isBarcode?: boolean; isMedication?: boolean;}> = ({ isComparing = false, isRoutine = false, isBarcode = false, isMedication = false }) => {
+const EngagingLoader: React.FC<{isComparing?: boolean; isRoutine?: boolean; isBarcode?: boolean; isMedication?: boolean; isMeal?: boolean;}> = ({ isComparing = false, isRoutine = false, isBarcode = false, isMedication = false, isMeal = false }) => {
     const messages = isComparing ? [
         "جاري استرجاع تحليلات المنتجات...",
         "تحليل نقاط القوة والضعف...",
@@ -274,6 +277,13 @@ const EngagingLoader: React.FC<{isComparing?: boolean; isRoutine?: boolean; isBa
         "استخلاص المعلومات الطبية الأساسية...",
         "تلخيص دواعي الاستعمال والتحذيرات...",
         "إعداد تقرير معلومات الدواء..."
+    ] : isMeal ? [
+        "جاري فحص صورة وجبتك...",
+        "التعرف على أصناف الطعام...",
+        "تقدير السعرات الحرارية...",
+        "تحليل المكونات الغذائية...",
+        "مقارنة الوجبة بأهدافك الصحية...",
+        "إعداد تقريرك الغذائي الشخصي..."
     ] : [
         "جاري مسح الصورة ضوئيًا...",
         "التعرف على قائمة المكونات...",
@@ -289,7 +299,7 @@ const EngagingLoader: React.FC<{isComparing?: boolean; isRoutine?: boolean; isBa
         const interval = setInterval(() => {
             index = (index + 1) % messages.length;
             setMessage(messages[index]);
-        }, 2500);
+        }, 1500); // Faster interval for a snappier feel
         return () => clearInterval(interval);
     }, [messages]);
 
@@ -540,6 +550,13 @@ const RoutineManager: React.FC<{
 // =================================================================================
 // Main App Component
 // =================================================================================
+interface NotificationState {
+  id: number;
+  message: string;
+  details?: string[];
+  type: 'warning' | 'info' | 'success';
+}
+
 const App: React.FC = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
@@ -557,11 +574,12 @@ const App: React.FC = () => {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isRoutineManagerOpen, setIsRoutineManagerOpen] = useState(false);
+  const [isFutureModalOpen, setIsFutureModalOpen] = useState(false);
   
   const [chat, setChat] = useState<Chat | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   
-  const [inputMode, setInputMode] = useState<'home' | 'image' | 'text' | 'barcode' | 'voice' | 'live' | 'scan-text' | 'medication' | 'general-chat'>('home');
+  const [inputMode, setInputMode] = useState<'home' | 'image' | 'text' | 'barcode' | 'voice' | 'live' | 'scan-text' | 'medication' | 'general-chat' | 'meal'>('home');
   const [isComparing, setIsComparing] = useState(false);
   const [comparisonResult, setComparisonResult] = useState<ComparisonResponse | null>(null);
   
@@ -575,6 +593,11 @@ const App: React.FC = () => {
   const [isAnalyzingMedication, setIsAnalyzingMedication] = useState(false);
   const [medicationAnalysis, setMedicationAnalysis] = useState<MedicationAnalysisResponse | null>(null);
 
+  const [isAnalyzingMeal, setIsAnalyzingMeal] = useState(false);
+  const [mealAnalysis, setMealAnalysis] = useState<MealAnalysisResponse | null>(null);
+  
+  const [notifications, setNotifications] = useState<NotificationState[]>([]);
+
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     document.body.className = `transition-colors duration-500 ${theme === 'dark' ? 'bg-slate-950' : 'bg-slate-100'}`;
@@ -587,7 +610,50 @@ const App: React.FC = () => {
     reader.readAsDataURL(file);
   };
   
-  const processAnalysisResult = (result: AnalysisResponse, image?: string) => {
+  const addNotification = useCallback((message: string, type: 'warning' | 'info' | 'success', details?: string[]) => {
+      const id = Date.now();
+      setNotifications(prev => [...prev, { id, message, type, details }]);
+  }, []);
+
+  const removeNotification = (id: number) => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+  
+  const checkForAllergens = useCallback((analysis: AnalysisResponse, userAllergies: string[]) => {
+      if (!userAllergies || userAllergies.length === 0) return;
+
+      const ingredients = [
+          ...analysis.المكونات_السلبية,
+          ...analysis.المكونات_المشكوك_فيها,
+      ];
+
+      const foundAllergens = new Set<string>();
+
+      for (const ingredient of ingredients) {
+          const arabicName = ingredient.الاسم_العربي.toLowerCase();
+          const scientificName = ingredient.الاسم_العلمي_او_الإنجليزي?.toLowerCase() || '';
+
+          const matchedAllergy = userAllergies.find(ua => {
+              const lowerUa = ua.toLowerCase().trim();
+              if (!lowerUa) return false;
+              return arabicName.includes(lowerUa) || scientificName.includes(lowerUa);
+          });
+          
+          if (matchedAllergy) {
+              foundAllergens.add(matchedAllergy);
+          }
+      }
+
+      if (foundAllergens.size > 0) {
+          addNotification(
+              "تنبيه حساسية!",
+              'warning',
+              Array.from(foundAllergens)
+          );
+      }
+  }, [addNotification]);
+  
+  const processAnalysisResult = useCallback((result: AnalysisResponse, image?: string) => {
         setAnalysis(result);
         const newHistoryItem: ScanHistoryItem = {
             id: new Date().toISOString(),
@@ -597,6 +663,8 @@ const App: React.FC = () => {
         };
         setScanHistory(prev => [newHistoryItem, ...prev.slice(0, 49)]);
         
+        checkForAllergens(result, allergies);
+
         const chatInstance = ai.chats.create({
             model: 'gemini-2.5-pro',
             config: { systemInstruction: `أنت Hamed AI، مساعد ذكي جزائري. مهمتك هي الإجابة على أسئلة المستخدم حول تحليل المنتج الذي تم إجراؤه بالفعل. تحدث باللهجة الجزائرية البسيطة والمهذبة. كن متعاونًا وإيجابيًا، وقدم اقتراحات بديلة عند الطلب. لا تقدم نصائح طبية.` },
@@ -607,7 +675,7 @@ const App: React.FC = () => {
         });
         setChat(chatInstance);
         setChatMessages([{role: 'model', content: "أهلاً بك! كيف يمكنني مساعدتك بخصوص هذا المنتج؟"}]);
-  };
+  }, [allergies, setScanHistory, checkForAllergens]);
 
   const handleAnalyzeClick = useCallback(async () => {
     if (!imageFile || !imageBase64) {
@@ -630,7 +698,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [imageFile, imageBase64, allergies, profile, setScanHistory]);
+  }, [imageFile, imageBase64, allergies, profile, processAnalysisResult]);
 
   const handleMedicationAnalyzeClick = useCallback(async () => {
     if (!imageFile || !imageBase64) {
@@ -653,6 +721,27 @@ const App: React.FC = () => {
     }
   }, [imageFile, imageBase64]);
 
+  const handleAnalyzeMeal = useCallback(async () => {
+    if (!imageFile || !imageBase64) {
+      setError('الرجاء تحديد صورة أولاً.');
+      return;
+    }
+    setIsAnalyzingMeal(true);
+    setError(null);
+    setMealAnalysis(null);
+
+    try {
+      const base64Data = imageBase64.split(',')[1];
+      const result = await analyzeMealImage(base64Data, imageFile.type, profile);
+      setMealAnalysis(result);
+    } catch (err) {
+      console.error(err);
+      setError('حدث خطأ أثناء تحليل وجبتك. الرجاء المحاولة مرة أخرى.');
+    } finally {
+      setIsAnalyzingMeal(false);
+    }
+  }, [imageFile, imageBase64, profile]);
+
 
   const handleTextAnalyzeClick = useCallback(async (text: string) => {
     if (!text.trim()) {
@@ -674,7 +763,7 @@ const App: React.FC = () => {
     } finally {
         setIsLoading(false);
     }
-  }, [allergies, profile, setScanHistory]);
+  }, [allergies, profile, processAnalysisResult]);
   
    const handleBarcodeScanned = useCallback(async (barcode: string) => {
         setInputMode('image');
@@ -706,7 +795,7 @@ const App: React.FC = () => {
         } finally {
             setIsBarcodeLoading(false);
         }
-    }, [allergies, profile, setScanHistory]);
+    }, [allergies, profile, processAnalysisResult]);
 
 
   const handleSendMessage = useCallback(async (message: string) => {
@@ -818,6 +907,7 @@ const App: React.FC = () => {
     setChatMessages([]);
     setInputMode('home');
     setMedicationAnalysis(null);
+    setMealAnalysis(null);
   };
 
   const handleSelectHistoryItem = (item: ScanHistoryItem) => {
@@ -850,6 +940,7 @@ const App: React.FC = () => {
     setIsRoutineManagerOpen(false);
     setComparisonResult(null);
     setRoutineAnalysisResult(null);
+    setIsFutureModalOpen(false);
   };
 
   const handleVoiceCommand = (command: string) => {
@@ -872,6 +963,8 @@ const App: React.FC = () => {
         setInputMode('live');
     } else if (lowerCaseCommand.includes('دواء') || lowerCaseCommand.includes('تحليل دواء')) {
         setInputMode('medication');
+    } else if (lowerCaseCommand.includes('وجبة') || lowerCaseCommand.includes('اكل')) {
+        setInputMode('meal');
     } else if (lowerCaseCommand.includes('اسال حامد') || lowerCaseCommand.includes('اسأل حامد')) {
         setInputMode('general-chat');
     } else if (lowerCaseCommand.includes('سجل') || lowerCaseCommand.includes('هيستوري')) {
@@ -892,7 +985,9 @@ const App: React.FC = () => {
   const modes = [
     { id: 'image', icon: UploadIcon, label: 'منتج' },
     { id: 'medication', icon: MedicationIcon, label: 'دواء' },
+    { id: 'meal', icon: MealIcon, label: 'وجبة' },
     { id: 'general-chat', icon: QuestionIcon, label: 'اسأل حامد' },
+    { id: 'future', icon: FutureIcon, label: 'ميزات مستقبلية' },
     { id: 'scan-text', icon: ScanTextIcon, label: 'مسح النص' },
     { id: 'text', icon: KeyboardIcon, label: 'نص' },
     { id: 'barcode', icon: BarcodeIcon, label: 'باركود' },
@@ -900,8 +995,8 @@ const App: React.FC = () => {
     { id: 'live', icon: LiveAnalysisIcon, label: 'مباشر' }
   ];
 
-  if (isLoading || isComparing || isBarcodeLoading || isAnalyzingRoutine || isAnalyzingMedication) {
-      content = <EngagingLoader isComparing={isComparing} isRoutine={isAnalyzingRoutine} isBarcode={isBarcodeLoading} isMedication={isAnalyzingMedication} />;
+  if (isLoading || isComparing || isBarcodeLoading || isAnalyzingRoutine || isAnalyzingMedication || isAnalyzingMeal) {
+      content = <EngagingLoader isComparing={isComparing} isRoutine={isAnalyzingRoutine} isBarcode={isBarcodeLoading} isMedication={isAnalyzingMedication} isMeal={isAnalyzingMeal} />;
   } else if (error) {
       content = (
           <div className="mt-6 p-4 bg-red-500/20 dark:bg-red-900/50 border-2 border-red-500/40 dark:border-red-700/80 rounded-lg text-center text-red-700 dark:text-red-300 shadow-lg dark:shadow-[0_0_20px_rgba(239,68,68,0.5)]">
@@ -932,11 +1027,26 @@ const App: React.FC = () => {
               </div>
           </div>
       );
+  } else if (mealAnalysis) {
+      content = (
+          <div className="w-full transition-all duration-500 ease-in-out animate-fade-in">
+              <MealAnalysisResult data={mealAnalysis} />
+               <div className="text-center mt-8">
+                  <button onClick={resetState} className="bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-3 px-10 rounded-full transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-emerald-500/50 shadow-lg hover:shadow-2xl active:translate-y-px">
+                      تحليل وجبة أخرى
+                  </button>
+              </div>
+          </div>
+      );
   } else if (inputMode === 'home') {
       content = <HomePage
                     modes={modes}
                     onModeSelect={(modeId) => {
-                        setInputMode(modeId as any);
+                        if (modeId === 'future') {
+                            setIsFutureModalOpen(true);
+                        } else {
+                            setInputMode(modeId as any);
+                        }
                     }}
                 />;
   } else {
@@ -967,6 +1077,17 @@ const App: React.FC = () => {
                     hasImage={!!imageFile}
                     promptText="صورة علبة الدواء أو النشرة"
                     subPromptText="التقط صورة واضحة للنشرة الداخلية"
+                />
+            )}
+            {inputMode === 'meal' && (
+                 <ImageUploader 
+                    onImageSelect={handleImageSelect}
+                    onAnalyzeClick={handleAnalyzeMeal}
+                    imagePreviewUrl={imageBase64}
+                    isLoading={isAnalyzingMeal}
+                    hasImage={!!imageFile}
+                    promptText="صورة وجبتك الغذائية"
+                    subPromptText="التقط صورة واضحة لتحليلها"
                 />
             )}
             {inputMode === 'scan-text' && (
@@ -1009,6 +1130,17 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen text-gray-800 dark:text-gray-100 flex flex-col items-center p-4 selection:bg-teal-500 selection:text-white transition-colors duration-500">
+      <div className="fixed top-5 right-5 z-[101] w-full max-w-sm space-y-2">
+          {notifications.map(n => (
+              <Notification
+                  key={n.id}
+                  message={n.message}
+                  details={n.details}
+                  type={n.type}
+                  onClose={() => removeNotification(n.id)}
+              />
+          ))}
+      </div>
       <StarfieldBackground />
       {inputMode !== 'home' && (
           <header className="w-full max-w-4xl py-4 px-6 my-4 bg-white/10 dark:bg-black/20 backdrop-blur-lg border border-slate-300/30 dark:border-teal-500/20 rounded-2xl flex justify-between items-center shadow-lg dark:shadow-[0_0_30px_rgba(45,212,191,0.2)] animate-fade-in">
@@ -1059,6 +1191,7 @@ const App: React.FC = () => {
       {comparisonResult && <ComparisonResult data={comparisonResult} onClose={() => setComparisonResult(null)} />}
       <RoutineManager isOpen={isRoutineManagerOpen} onClose={() => setIsRoutineManagerOpen(false)} routine={routines} setRoutine={setRoutines} onOpenHistory={handleOpenHistoryForRoutine} onAnalyze={handleAnalyzeRoutine} />
       {routineAnalysisResult && <RoutineAnalysisResult data={routineAnalysisResult} onClose={() => setRoutineAnalysisResult(null)} />}
+      <FutureFeaturesModal isOpen={isFutureModalOpen} onClose={() => setIsFutureModalOpen(false)} />
       
       <VoiceControl onCommand={handleVoiceCommand} />
     </div>

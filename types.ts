@@ -110,3 +110,20 @@ export interface MedicationAnalysisResponse {
     sideEffects: string[];
     warnings: string[];
 }
+
+// New type for Meal Analysis feature
+export interface MealAnalysisResponse {
+    mealName: string;
+    estimatedCalories: {
+        value: number;
+        unit: string;
+    };
+    macronutrients: {
+        protein: string;
+        carbohydrates: string;
+        fat: string;
+    };
+    identifiedFoods: string[];
+    healthSummary: string;
+    suggestions: string[];
+}

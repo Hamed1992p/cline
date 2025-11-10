@@ -69,6 +69,19 @@
         from { transform: rotate(0deg); }
         to { transform: rotate(360deg); }
       }
+      @keyframes slide-in-right {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+      .animate-slide-in-right {
+        animation: slide-in-right 0.5s ease-out forwards;
+      }
       .constellation-container {
         position: relative;
         width: 500px;
@@ -115,6 +128,8 @@
         cursor: pointer;
         transition: all 0.3s ease-in-out;
         transform: var(--node-transform);
+        --node-color: #94a3b8; /* Default icon color */
+        --node-glow-color-rgb: 34, 211, 238; /* Default glow color (cyan) */
       }
       .orbiting-node::before { /* Connecting Line */
         content: '';
@@ -143,9 +158,9 @@
       }
       .orbiting-node:hover {
         transform: var(--node-transform) scale(1.2);
-        background-color: rgba(34, 211, 238, 0.2);
-        border-color: rgba(34, 211, 238, 1);
-        box-shadow: 0 0 20px rgba(34, 211, 238, 0.7);
+        background-color: rgba(var(--node-glow-color-rgb), 0.2);
+        border-color: rgb(var(--node-glow-color-rgb));
+        box-shadow: 0 0 20px rgba(var(--node-glow-color-rgb), 0.7);
       }
       .orbiting-node:hover::before {
         background: linear-gradient(to top, rgba(167, 243, 208, 1), rgba(34, 211, 238, 0));
@@ -157,13 +172,13 @@
       .node-icon {
         width: 32px;
         height: 32px;
-        color: #94a3b8; /* slate-400 */
+        color: var(--node-color);
         transition: all 0.3s ease-in-out;
       }
       .orbiting-node:hover .node-icon {
         color: white;
         transform: scale(1.1);
-        filter: drop-shadow(0 0 5px rgba(34, 211, 238, 1));
+        filter: drop-shadow(0 0 5px rgb(var(--node-glow-color-rgb)));
       }
       .node-label {
         position: absolute;

@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type, Chat } from "@google/genai";
-import { AnalysisResponse, UserProfile, ComparisonResponse, RoutineAnalysis, MedicationAnalysisResponse } from '../types';
+import { AnalysisResponse, UserProfile, ComparisonResponse, RoutineAnalysis, MedicationAnalysisResponse, MealAnalysisResponse } from '../types';
 
 const API_KEY = process.env.API_KEY;
 if (!API_KEY) {
@@ -166,7 +166,7 @@ export const analyzeProductImage = async (imageBase64: string, mimeType: string,
         const systemInstruction = generateSystemInstruction(allergies, profile);
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
+            model: 'gemini-2.5-flash',
             contents: { parts: [imagePart, {text: "Please analyze the product in the image based on my profile."}] },
             config: {
                 systemInstruction,
@@ -191,7 +191,7 @@ export const analyzeProductText = async (text: string, allergies: string[], prof
             .replace("المستخلص من الصورة", "المقدم في النص (إذا تم توفيره)");
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
+            model: 'gemini-2.5-flash',
             contents: { parts: [{ text: `الرجاء تحليل قائمة المكونات التالية: ${text}` }] },
             config: {
                 systemInstruction,
@@ -259,7 +259,7 @@ export const compareProducts = async (analysis1: AnalysisResponse, analysis2: An
         `;
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
+            model: 'gemini-2.5-flash',
             contents: { parts: [{ text: prompt }] },
             config: {
                 systemInstruction,
@@ -337,7 +337,7 @@ export const analyzeRoutine = async (routineName: string, productAnalyses: Analy
         `;
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
+            model: 'gemini-2.5-flash',
             contents: { parts: [{ text: prompt }] },
             config: {
                 systemInstruction,
@@ -402,7 +402,7 @@ export const analyzeMedicationImage = async (imageBase64: string, mimeType: stri
         const systemInstruction = generateMedicationSystemInstruction();
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
+            model: 'gemini-2.5-flash',
             contents: { parts: [imagePart, {text: "الرجاء استخلاص المعلومات الأساسية من هذا الدواء أو نشرته الداخلية."}] },
             config: {
                 systemInstruction,
@@ -417,6 +417,90 @@ export const analyzeMedicationImage = async (imageBase64: string, mimeType: stri
     } catch (error) {
         console.error("Error calling Gemini API for medication analysis:", error);
         throw new Error("Failed to get medication analysis from Gemini API.");
+    }
+};
+
+// =================================================================================
+// Meal Analysis Service (NEW)
+// =================================================================================
+
+const mealAnalysisSchema = {
+    type: Type.OBJECT,
+    properties: {
+        "mealName": { type: Type.STRING, description: "اسم وصفي للوجبة بناءً على محتوياتها (e.g., 'طبق دجاج مشوي مع أرز وخضروات')." },
+        "estimatedCalories": {
+            type: Type.OBJECT,
+            properties: {
+                "value": { type: Type.INTEGER, description: "تقدير عدد السعرات الحرارية في الوجبة." },
+                "unit": { type: Type.STRING, description: "وحدة السعرات الحرارية (e.g., 'سعرة حرارية')." }
+            },
+            required: ["value", "unit"]
+        },
+        "macronutrients": {
+            type: Type.OBJECT,
+            properties: {
+                "protein": { type: Type.STRING, description: "تقدير كمية البروتين بالجرام (e.g., '30g')." },
+                "carbohydrates": { type: Type.STRING, description: "تقدير كمية الكربوهيدرات بالجرام (e.g., '50g')." },
+                "fat": { type: Type.STRING, description: "تقدير كمية الدهون بالجرام (e.g., '15g')." }
+            },
+            required: ["protein", "carbohydrates", "fat"]
+        },
+        "identifiedFoods": { type: Type.ARRAY, items: { type: Type.STRING }, description: "قائمة بالأطعمة الرئيسية التي تم التعرف عليها في الوجبة." },
+        "healthSummary": { type: Type.STRING, description: "ملخص باللغة العربية حول مدى توافق هذه الوجبة مع الأهداف الصحية والتفضيلات الغذائية للمستخدم." },
+        "suggestions": { type: Type.ARRAY, items: { type: Type.STRING }, description: "قائمة بـ 2-3 اقتراحات لتحسين الوجبة أو جعلها صحية أكثر." }
+    },
+    required: ["mealName", "estimatedCalories", "macronutrients", "identifiedFoods", "healthSummary", "suggestions"]
+};
+
+const generateMealSystemInstruction = (profile: UserProfile) => {
+    let instruction = `أنت خبير تغذية ذكي. مهمتك هي تحليل صورة لوجبة طعام وتقديم تقرير غذائي تقديري ومفيد.
+    
+    **المهام:**
+    1.  **التعرف على الأطعمة:** حدد المكونات الرئيسية في طبق الطعام.
+    2.  **تقدير العناصر الغذائية:** قدر السعرات الحرارية والبروتين والكربوهيدرات والدهون. كن واضحًا بأن هذه تقديرات.
+    3.  **التحليل الصحي:** بناءً على ملف المستخدم، قدم ملخصًا حول مدى صحة هذه الوجبة بالنسبة له.
+    4.  **تقديم اقتراحات:** قدم نصائح عملية لتحسين الوجبة.
+
+    **ملف المستخدم للتحليل:**
+    - التفضيلات الغذائية: ${profile.dietaryPreferences.join(', ') || 'لا يوجد'}
+    - الأهداف الصحية: ${profile.healthGoals.join(', ') || 'لا يوجد'}
+    
+    **قواعد صارمة:**
+    1.  **لا تقدم نصيحة طبية:** لا تشخص أي حالات صحية. تحليلك هو لأغراض معلوماتية فقط.
+    2.  **كن واقعيًا:** استخدم معرفتك الغذائية لتقديم تقديرات معقولة.
+    3.  **اللغة العربية الفصحى:** يجب أن تكون جميع المخرجات باللغة العربية.
+    4.  **الإخراج JSON فقط:** يجب أن يكون الإخراج النهائي عبارة عن كائن JSON نقي وصالح يتبع المخطط المحدد بدقة. لا تقم بتضمين أي نص إضافي.
+    `;
+    return instruction;
+};
+
+export const analyzeMealImage = async (imageBase64: string, mimeType: string, profile: UserProfile): Promise<MealAnalysisResponse> => {
+    try {
+        const imagePart = {
+            inlineData: {
+                data: imageBase64,
+                mimeType: mimeType,
+            },
+        };
+
+        const systemInstruction = generateMealSystemInstruction(profile);
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts: [imagePart, {text: "الرجاء تحليل هذه الوجبة الغذائية بناءً على ملفي الشخصي."}] },
+            config: {
+                systemInstruction,
+                responseMimeType: 'application/json',
+                responseSchema: mealAnalysisSchema,
+            }
+        });
+
+        const jsonText = response.text.trim();
+        return JSON.parse(jsonText) as MealAnalysisResponse;
+
+    } catch (error) {
+        console.error("Error calling Gemini API for meal analysis:", error);
+        throw new Error("Failed to get meal analysis from Gemini API.");
     }
 };
 
