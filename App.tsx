@@ -1,4 +1,6 @@
 
+
+
 import React, { useState, useCallback, useEffect, ReactNode } from 'react';
 import { AnalysisResponse, UserProfile, ScanHistoryItem, ChatMessage, ComparisonResponse, Routine, RoutineProduct, RoutineAnalysis, MedicationAnalysisResponse, MealAnalysisResponse } from './types';
 import { analyzeProductImage, analyzeProductText, compareProducts, analyzeRoutine, analyzeMedicationImage, analyzeMealImage, ai } from './services/geminiService';
@@ -11,7 +13,7 @@ import AllergyManager from './components/AllergyManager';
 import { AllergyIcon } from './components/icons/AllergyIcon';
 import { UserProfileIcon, HistoryIcon } from './components/icons/DetailIcons';
 import { XCircleIcon, CheckCircleIcon } from './components/icons/ResultIcons';
-import { KeyboardIcon, ScaleIcon, BarcodeIcon, RoutineIcon, MicrophoneIcon, LiveAnalysisIcon, ScanTextIcon, MedicationIcon, QuestionIcon, FutureIcon, MealIcon } from './components/icons/ActionIcons';
+import { KeyboardIcon, ScaleIcon, BarcodeIcon, RoutineIcon, MicrophoneIcon, LiveAnalysisIcon, ScanTextIcon, MedicationIcon, QuestionIcon, FutureIcon, MealIcon, FeatherIcon } from './components/icons/ActionIcons';
 import { UploadIcon } from './components/icons/UploadIcon';
 import BarcodeScanner from './components/BarcodeScanner';
 import AudioRecorder from './components/AudioRecorder';
@@ -25,6 +27,7 @@ import StarfieldBackground from './components/StarfieldBackground';
 import GeneralChat from './components/GeneralChat';
 import Notification from './components/Notification';
 import FutureFeaturesModal from './components/FutureFeaturesModal';
+import InstallPWAButton from './components/InstallPWAButton';
 
 
 const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] => {
@@ -43,7 +46,6 @@ const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<R
       const valueToStore = value instanceof Function ? value(storedValue) : value;
       setStoredValue(valueToStore);
       window.localStorage.setItem(key, JSON.stringify(valueToStore));
-    // FIX: Corrected the malformed catch block which was causing syntax errors.
     } catch (error) {
       console.error(error);
     }
@@ -96,7 +98,7 @@ const UserProfileManager: React.FC<UserProfileManagerProps> = ({ isOpen, onClose
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
-            <div className="w-full max-w-lg m-4 p-6 bg-slate-200/80 dark:bg-[#020617]/60 backdrop-blur-xl rounded-2xl border border-slate-300/50 dark:border-cyan-500/30 shadow-2xl dark:shadow-[0_0_40px_rgba(34,211,238,0.3)]" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full max-w-lg m-4 p-6 bg-slate-200/80 dark:bg-[#1e1b4b]/60 backdrop-blur-xl rounded-2xl border border-slate-300/50 dark:border-cyan-500/30 shadow-2xl dark:shadow-[0_0_40px_rgba(34,211,238,0.3)]" onClick={(e) => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-2xl font-bold text-gray-800 dark:text-cyan-400 [text-shadow:0_0_10px_theme(colors.cyan.500)]">ملفي الشخصي</h2>
                     <button onClick={onClose} className="p-1 rounded-full text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700/50 transition-colors">
@@ -190,7 +192,7 @@ const ScanHistory: React.FC<ScanHistoryProps> = ({ history, onSelect, onClear, o
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-40 animate-fade-in" onClick={onClose}>
-             <div className="w-full max-w-3xl h-[80vh] m-4 flex flex-col p-6 bg-slate-200/80 dark:bg-[#020617]/60 backdrop-blur-xl rounded-2xl border border-slate-300/50 dark:border-teal-500/30 shadow-2xl dark:shadow-[0_0_40px_rgba(45,212,191,0.3)]" onClick={(e) => e.stopPropagation()}>
+             <div className="w-full max-w-3xl h-[80vh] m-4 flex flex-col p-6 bg-slate-200/80 dark:bg-[#1e1b4b]/60 backdrop-blur-xl rounded-2xl border border-slate-300/50 dark:border-teal-500/30 shadow-2xl dark:shadow-[0_0_40px_rgba(45,212,191,0.3)]" onClick={(e) => e.stopPropagation()}>
                  <div className="flex justify-between items-center mb-4 flex-shrink-0">
                     <h2 className="text-2xl font-bold text-gray-800 dark:text-teal-400 [text-shadow:0_0_10px_theme(colors.teal.500)]">
                         {selectionMode ? 'اختر منتجات للروتين' : 'سجل التحليلات'}
@@ -289,7 +291,7 @@ const EngagingLoader: React.FC<{isComparing?: boolean; isRoutine?: boolean; isBa
         "التعرف على قائمة المكونات...",
         "استشارة قواعد البيانات العلمية...",
         "التحقق من المواد المسببة للحساسية...",
-        "تحليل الادعاءات التسويقية...",
+        "تقييم الأثر البيئي للمنتج...",
         "وضع اللمسات الأخيرة على تقريرك الشخصي..."
     ];
     const [message, setMessage] = useState(messages[0]);
@@ -352,7 +354,7 @@ const ManualInput: React.FC<ManualInputProps> = ({ onAnalyzeClick, isLoading }) 
 const ComparisonResult: React.FC<{ data: ComparisonResponse; onClose: () => void; }> = ({ data, onClose }) => {
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
-            <div className="w-full max-w-4xl h-[90vh] m-4 flex flex-col p-6 bg-slate-200/80 dark:bg-[#020617]/60 backdrop-blur-xl rounded-2xl border border-slate-300/50 dark:border-cyan-500/30 shadow-2xl dark:shadow-[0_0_40px_rgba(34,211,238,0.3)]" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full max-w-4xl h-[90vh] m-4 flex flex-col p-6 bg-slate-200/80 dark:bg-[#1e1b4b]/60 backdrop-blur-xl rounded-2xl border border-slate-300/50 dark:border-cyan-500/30 shadow-2xl dark:shadow-[0_0_40px_rgba(34,211,238,0.3)]" onClick={(e) => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-4 flex-shrink-0">
                     <h2 className="text-2xl font-bold text-gray-800 dark:text-cyan-400 [text-shadow:0_0_10px_theme(colors.cyan.500)]">نتائج المقارنة</h2>
                      <button onClick={onClose} className="p-1 rounded-full text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700/50 transition-colors">
@@ -429,7 +431,7 @@ const RoutineAnalysisResult: React.FC<{ data: RoutineAnalysis; onClose: () => vo
     // ... UI for displaying routine analysis ...
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
-            <div className="w-full max-w-2xl h-[90vh] m-4 flex flex-col p-6 bg-slate-200/80 dark:bg-[#020617]/60 backdrop-blur-xl rounded-2xl border border-slate-300/50 dark:border-purple-500/30 shadow-2xl dark:shadow-[0_0_40px_rgba(168,85,247,0.3)]" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full max-w-2xl h-[90vh] m-4 flex flex-col p-6 bg-slate-200/80 dark:bg-[#1e1b4b]/60 backdrop-blur-xl rounded-2xl border border-slate-300/50 dark:border-purple-500/30 shadow-2xl dark:shadow-[0_0_40px_rgba(168,85,247,0.3)]" onClick={(e) => e.stopPropagation()}>
                  <div className="flex justify-between items-center mb-4 flex-shrink-0">
                     <h2 className="text-2xl font-bold text-gray-800 dark:text-purple-400 [text-shadow:0_0_10px_theme(colors.purple.500)]">تحليل الروتين</h2>
                      <button onClick={onClose} className="p-1 rounded-full text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700/50 transition-colors">
@@ -498,7 +500,7 @@ const RoutineManager: React.FC<{
     
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
-            <div className="w-full max-w-4xl h-[90vh] m-4 flex flex-col p-6 bg-slate-200/80 dark:bg-[#020617]/60 backdrop-blur-xl rounded-2xl border border-slate-300/50 dark:border-purple-500/30 shadow-2xl dark:shadow-[0_0_40px_rgba(168,85,247,0.3)]" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full max-w-4xl h-[90vh] m-4 flex flex-col p-6 bg-slate-200/80 dark:bg-[#1e1b4b]/60 backdrop-blur-xl rounded-2xl border border-slate-300/50 dark:border-purple-500/30 shadow-2xl dark:shadow-[0_0_40px_rgba(168,85,247,0.3)]" onClick={(e) => e.stopPropagation()}>
                  <div className="flex justify-between items-center mb-4 flex-shrink-0">
                     <h2 className="text-2xl font-bold text-gray-800 dark:text-purple-400 [text-shadow:0_0_10px_theme(colors.purple.500)]">مدير روتين العناية بالبشرة</h2>
                      <button onClick={onClose} className="p-1 rounded-full text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700/50 transition-colors">
@@ -565,6 +567,7 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   
   const [theme, setTheme] = useLocalStorage<'dark' | 'light'>('theme', 'dark');
+  const [isLiteMode, setIsLiteMode] = useLocalStorage<boolean>('isLiteMode', false);
   const [allergies, setAllergies] = useLocalStorage<string[]>('userAllergies', []);
   const [profile, setProfile] = useLocalStorage<UserProfile>('userProfile', DEFAULT_PROFILE);
   const [scanHistory, setScanHistory] = useLocalStorage<ScanHistoryItem[]>('scanHistory', []);
@@ -600,8 +603,13 @@ const App: React.FC = () => {
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
-    document.body.className = `transition-colors duration-500 ${theme === 'dark' ? 'bg-slate-950' : 'bg-slate-100'}`;
-  }, [theme]);
+    const bodyClasses = ['transition-colors', 'duration-500'];
+    bodyClasses.push(theme === 'dark' ? 'bg-indigo-950' : 'bg-slate-100');
+    if (isLiteMode) {
+        bodyClasses.push('lite-mode');
+    }
+    document.body.className = bodyClasses.join(' ');
+  }, [theme, isLiteMode]);
   
   const handleImageSelect = (file: File) => {
     setImageFile(file);
@@ -666,7 +674,7 @@ const App: React.FC = () => {
         checkForAllergens(result, allergies);
 
         const chatInstance = ai.chats.create({
-            model: 'gemini-2.5-pro',
+            model: 'gemini-2.5-flash',
             config: { systemInstruction: `أنت Hamed AI، مساعد ذكي جزائري. مهمتك هي الإجابة على أسئلة المستخدم حول تحليل المنتج الذي تم إجراؤه بالفعل. تحدث باللهجة الجزائرية البسيطة والمهذبة. كن متعاونًا وإيجابيًا، وقدم اقتراحات بديلة عند الطلب. لا تقدم نصائح طبية.` },
             history: [
                 { role: 'user', parts: [{ text: `هذا هو تحليل المنتج: ${JSON.stringify(result)}. سأطرح أسئلة متابعة حول هذا المنتج.` }] },
@@ -916,7 +924,7 @@ const App: React.FC = () => {
     setIsHistoryOpen(false);
     // Re-initiate chat for the selected old item
     const chatInstance = ai.chats.create({ 
-        model: 'gemini-2.5-pro',
+        model: 'gemini-2.5-flash',
         config: { systemInstruction: `أنت Hamed AI...` }, // Abridged for brevity
         history: [
           { role: 'user', parts: [{ text: `هذا هو تحليل المنتج: ${JSON.stringify(item.analysis)}.` }] },
@@ -1129,7 +1137,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen text-gray-800 dark:text-gray-100 flex flex-col items-center p-4 selection:bg-teal-500 selection:text-white transition-colors duration-500">
+    <div className="min-h-screen text-gray-800 dark:text-gray-100 flex flex-col items-center p-4 selection:bg-teal-500 selection:text-white">
       <div className="fixed top-5 right-5 z-[101] w-full max-w-sm space-y-2">
           {notifications.map(n => (
               <Notification
@@ -1141,11 +1149,14 @@ const App: React.FC = () => {
               />
           ))}
       </div>
-      <StarfieldBackground />
+      {!isLiteMode && <StarfieldBackground />}
       {inputMode !== 'home' && (
           <header className="w-full max-w-4xl py-4 px-6 my-4 bg-white/10 dark:bg-black/20 backdrop-blur-lg border border-slate-300/30 dark:border-teal-500/20 rounded-2xl flex justify-between items-center shadow-lg dark:shadow-[0_0_30px_rgba(45,212,191,0.2)] animate-fade-in">
             <div className="flex items-center gap-2">
                 <ThemeToggleButton theme={theme} toggleTheme={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} />
+                 <button onClick={() => setIsLiteMode(prev => !prev)} className={`p-2 rounded-full bg-slate-300/50 dark:bg-gray-700/50 hover:bg-slate-400/50 dark:hover:bg-gray-600/50 transition-colors ${isLiteMode ? 'text-teal-500' : 'text-gray-500'}`} aria-label="الوضع الخفيف">
+                    <FeatherIcon className="w-6 h-6" />
+                </button>
                 <button onClick={() => setIsAllergyModalOpen(true)} className="p-2 rounded-full bg-slate-300/50 dark:bg-gray-700/50 text-red-600 dark:text-red-400 hover:bg-slate-400/50 dark:hover:bg-gray-600/50 transition-colors relative" aria-label="إدارة الحساسية">
                     <AllergyIcon className="w-6 h-6" />
                     {allergies.length > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">{allergies.length}</span>}
@@ -1194,6 +1205,7 @@ const App: React.FC = () => {
       <FutureFeaturesModal isOpen={isFutureModalOpen} onClose={() => setIsFutureModalOpen(false)} />
       
       <VoiceControl onCommand={handleVoiceCommand} />
+      <InstallPWAButton />
     </div>
   );
 };

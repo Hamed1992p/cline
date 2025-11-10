@@ -11,7 +11,6 @@ interface AudioRecorderProps {
 }
 
 // Check for SpeechRecognition API
-// FIX: Property 'SpeechRecognition' does not exist on type 'Window & typeof globalThis'.
 const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
 const AudioRecorder: React.FC<AudioRecorderProps> = ({ onAnalyzeClick, isLoading }) => {
@@ -20,7 +19,6 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onAnalyzeClick, isLoading
     const [error, setError] = useState<string | null>(null);
 
     // Use a ref to hold the recognition object to avoid re-creating it on re-renders
-    // FIX: 'SpeechRecognition' refers to a value, but is being used as a type here. Using 'any' as a workaround.
     const recognitionRef = useRef<any | null>(null);
 
     useEffect(() => {
@@ -36,7 +34,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onAnalyzeClick, isLoading
             recognition.interimResults = false;
             recognitionRef.current = recognition;
 
-            recognition.onresult = (event) => {
+            recognition.onresult = (event: any) => {
                 let final_transcript = '';
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     if (event.results[i].isFinal) {
@@ -48,7 +46,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onAnalyzeClick, isLoading
                 }
             };
 
-            recognition.onerror = (event) => {
+            recognition.onerror = (event: any) => {
                 console.error('Speech recognition error', event.error);
                 let errorMessage = event.error;
                 if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {

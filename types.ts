@@ -31,6 +31,14 @@ export interface Suggestion {
   السبب: string;
 }
 
+export interface EnvironmentalImpact {
+  score: number;
+  rating: string;
+  summary: string;
+  positiveAspects: string[];
+  negativeAspects: string[];
+}
+
 export interface AnalysisResponse {
   اسم_المنتج: string;
   العلامة_التجارية?: string;
@@ -47,6 +55,7 @@ export interface AnalysisResponse {
   المكونات_المشكوك_فيها: Ingredient[];
   الممارسات_التسويقية_الخادعة: MarketingClaim[];
   اقتراحات_بديلة?: Suggestion[];
+  environmentalImpact?: EnvironmentalImpact;
   ملاحظات_إضافية: string;
 }
 

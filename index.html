@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hamed AI – Lens of Health & Beauty</title>
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#020617">
+    <meta name="theme-color" content="#1e1b4b">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,7 +13,7 @@
     <style>
       body {
         font-family: 'Cairo', sans-serif;
-        background-color: #020617; /* slate-950 */
+        background-color: #1e1b4b; /* indigo-950 */
       }
       #starfield-bg {
         position: fixed;
@@ -197,6 +197,27 @@
       .orbiting-node:hover .node-label {
         opacity: 1;
         transform: translateY(0);
+      }
+      /* Lite Mode for Performance */
+      .lite-mode .central-star,
+      .lite-mode .orbiting-node,
+      .lite-mode .node-icon,
+      .lite-mode .constellation-container,
+      .lite-mode body,
+      .lite-mode .animate-shimmer {
+        transition: none !important;
+        animation: none !important;
+      }
+      .lite-mode .orbiting-node:hover {
+        transform: var(--node-transform) scale(1.15);
+        background-color: rgba(var(--node-glow-color-rgb), 0.15);
+        box-shadow: none;
+      }
+      .lite-mode .orbiting-node:hover .node-icon {
+        filter: none;
+      }
+      .lite-mode .orbiting-node:hover::after {
+        opacity: 0;
       }
     </style>
   <script type="importmap">

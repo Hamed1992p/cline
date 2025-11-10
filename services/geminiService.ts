@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI, Type, Chat } from "@google/genai";
 import { AnalysisResponse, UserProfile, ComparisonResponse, RoutineAnalysis, MedicationAnalysisResponse, MealAnalysisResponse } from '../types';
 
@@ -53,6 +54,7 @@ const generateSystemInstruction = (allergies: string[], profile: UserProfile) =>
     }
 
     instruction += "\n**مهمة إضافية**: بناءً على التحليل الشامل، قم بتوفير 'تقييم عام' للمنتج يتضمن تقييمًا حرفيًا (من A+ إلى F)، ونقاطًا من 100، وسببًا موجزًا لهذا التقييم.\n";
+    instruction += "\n**مهمة إضافية 2 (بيئية)**: قم بتقييم الأثر البيئي للمنتج. انظر إلى مواد التعبئة والتغليف (بلاستيك، زجاج، ورق معاد تدويره)، والمكونات (مثل زيت النخيل المستدام)، وأي شهادات بيئية ظاهرة. قدم تقييمًا من 100، ملخصًا، وجوانب إيجابية وسلبية.\n";
 
     instruction += `
     مبادئ التوجيه:
@@ -148,9 +150,21 @@ const analysisSchema = {
                 required: ["اسم_المنتج_البديل", "السبب"]
             }
         },
+        "environmentalImpact": {
+            type: Type.OBJECT,
+            description: "تقييم الأثر البيئي للمنتج.",
+            properties: {
+                "score": { type: Type.INTEGER, description: "تقييم رقمي من 0 إلى 100 لمدى صداقة المنتج للبيئة." },
+                "rating": { type: Type.STRING, description: "تقييم وصفي (e.g., 'ممتاز', 'متوسط', 'ضعيف')." },
+                "summary": { type: Type.STRING, description: "ملخص موجز للأثر البيئي." },
+                "positiveAspects": { type: Type.ARRAY, items: { type: Type.STRING }, description: "الجوانب الإيجابية بيئيًا." },
+                "negativeAspects": { type: Type.ARRAY, items: { type: Type.STRING }, description: "الجوانب السلبية بيئيًا." }
+            },
+            required: ["score", "rating", "summary", "positiveAspects", "negativeAspects"]
+        },
         "ملاحظات_إضافية": { type: Type.STRING, description: "أي ملاحظات عامة أو توصيات لتحسين المنتج (دون تقديم نصيحة مباشرة للمستخدم)." }
     },
-    required: ["اسم_المنتج", "العلامة_التجارية", "الحجم_او_الوزن", "فئة_المنتج", "ملخص_التحليل", "التقييم_العام", "المكونات_الإيجابية", "المكونات_السلبية", "المكونات_المشكوك_فيها", "الممارسات_التسويقية_الخادعة", "ملاحظات_إضافية"]
+    required: ["اسم_المنتج", "العلامة_التجارية", "الحجم_او_الوزن", "فئة_المنتج", "ملخص_التحليل", "التقييم_العام", "المكونات_الإيجابية", "المكونات_السلبية", "المكونات_المشكوك_فيها", "الممارسات_التسويقية_الخادعة", "environmentalImpact", "ملاحظات_إضافية"]
 };
 
 
@@ -469,7 +483,7 @@ const generateMealSystemInstruction = (profile: UserProfile) => {
     1.  **لا تقدم نصيحة طبية:** لا تشخص أي حالات صحية. تحليلك هو لأغراض معلوماتية فقط.
     2.  **كن واقعيًا:** استخدم معرفتك الغذائية لتقديم تقديرات معقولة.
     3.  **اللغة العربية الفصحى:** يجب أن تكون جميع المخرجات باللغة العربية.
-    4.  **الإخراج JSON فقط:** يجب أن يكون الإخراج النهائي عبارة عن كائن JSON نقي وصالح يتبع المخطط المحدد بدقة. لا تقم بتضمين أي نص إضافي.
+    4.  **الإخراج JSON فقط.** يجب أن يكون الإخراج النهائي عبارة عن كائن JSON نقي وصالح يتبع المخطط المحدد بدقة. لا تقم بتضمين أي نص إضافي.
     `;
     return instruction;
 };
@@ -504,7 +518,6 @@ export const analyzeMealImage = async (imageBase64: string, mimeType: string, pr
     }
 };
 
-// FIX: Corrected the type of the 'history' parameter to be an array of history objects.
 export const createGeneralChat = (history: { role: string, parts: { text: string }[] }[] = []) => {
     const systemInstruction = `أنت Hamed AI، مساعد ذكاء اصطناعي جزائري خبير في مجالات الصحة والجمال والعناية الشخصية. مهمتك هي الإجابة على أسئلة المستخدمين بطريقة ودودة، مفيدة، وعلمية مبسطة. تحدث باللهجة الجزائرية البيضاء (لهجة العاصمة) بشكل مهذب ومحترم.
     
@@ -520,7 +533,7 @@ export const createGeneralChat = (history: { role: string, parts: { text: string
     `;
     
     return ai.chats.create({
-        model: 'gemini-2.5-pro',
+        model: 'gemini-2.5-flash',
         config: { systemInstruction },
         history
     });

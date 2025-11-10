@@ -15,7 +15,6 @@ interface ISpeechRecognition extends EventTarget {
   onend: () => void;
 }
 
-// FIX: Property 'SpeechRecognition' does not exist on type 'Window & typeof globalThis'.
 // Using 'any' for window properties to bypass TypeScript's strict checks.
 const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 

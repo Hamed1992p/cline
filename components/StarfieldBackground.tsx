@@ -16,7 +16,7 @@ const StarfieldBackground: React.FC = () => {
         canvas.height = height;
 
         const stars: { x: number, y: number, z: number, opacity: number }[] = [];
-        const numStars = 500;
+        const numStars = 250;
         
         for (let i = 0; i < numStars; i++) {
             stars.push({
@@ -45,13 +45,13 @@ const StarfieldBackground: React.FC = () => {
         window.addEventListener('mousemove', handleMouseMove);
 
         const draw = () => {
-            ctx.fillStyle = "#020617";
+            ctx.fillStyle = "#1e1b4b";
             ctx.fillRect(0, 0, width, height);
 
             // Draw faint nebula
             const nebulaGradient = ctx.createRadialGradient(width/2, height/2, 100, width/2, height/2, Math.max(width, height) / 2);
-            nebulaGradient.addColorStop(0, 'rgba(20, 30, 50, 0.4)');
-            nebulaGradient.addColorStop(1, 'rgba(2, 6, 23, 0)');
+            nebulaGradient.addColorStop(0, 'rgba(40, 30, 70, 0.4)');
+            nebulaGradient.addColorStop(1, 'rgba(30, 27, 75, 0)');
             ctx.fillStyle = nebulaGradient;
             ctx.fillRect(0, 0, width, height);
 

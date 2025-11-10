@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { AnalysisResponse, ChatMessage } from '../types';
+import { AnalysisResponse, ChatMessage, EnvironmentalImpact } from '../types';
 import ItemCard from './ItemCard';
 import { CheckCircleIcon, XCircleIcon, QuestionMarkCircleIcon, ExclamationTriangleIcon } from './icons/ResultIcons';
-import { TagIcon, BoxIcon, CategoryIcon, ShareIcon } from './icons/DetailIcons';
+import { TagIcon, BoxIcon, CategoryIcon, ShareIcon, LeafIcon } from './icons/DetailIcons';
 import { SuggestionIcon } from './icons/SuggestionIcon';
 import ChatFollowUp from './ChatFollowUp';
 
@@ -54,6 +54,40 @@ const ScoreDisplay: React.FC<{ score: { النقاط: number; التقييم: st
             <p className="md:col-span-2 text-center md:text-right text-gray-700 dark:text-gray-300">
                 <strong className={`font-semibold ${scoreColor}`}>الخلاصة:</strong> {score.السبب}
             </p>
+        </div>
+    );
+};
+
+const EnvironmentalImpactDisplay: React.FC<{ data: EnvironmentalImpact }> = ({ data }) => {
+    const scoreColor = data.score >= 75 ? 'text-green-400' : data.score >= 40 ? 'text-yellow-400' : 'text-red-400';
+
+    return (
+        <div className="mt-6">
+            <h3 className={`text-xl font-bold text-green-500 dark:text-green-400 mb-2 flex items-center gap-2 justify-center [text-shadow:0_0_8px_var(--glow-color)]`}>
+                <LeafIcon className="h-6 w-6" />
+                الأثر البيئي
+            </h3>
+            <div className="p-4 bg-slate-100 dark:bg-black/20 rounded-lg border border-slate-300 dark:border-green-500/30 space-y-4">
+                <div className="text-center">
+                    <span className={`text-4xl font-bold ${scoreColor}`}>{data.score}<span className="text-2xl">%</span></span>
+                    <p className={`font-semibold ${scoreColor}`}>{data.rating}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{data.summary}</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <h4 className="font-bold text-green-600 dark:text-green-400 mb-1">نقاط إيجابية</h4>
+                        <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1">
+                            {data.positiveAspects.map((pro, i) => <li key={i}>{pro}</li>)}
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 className="font-bold text-red-600 dark:text-red-400 mb-1">نقاط سلبية</h4>
+                        <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1">
+                            {data.negativeAspects.map((con, i) => <li key={i}>{con}</li>)}
+                        </ul>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };
@@ -205,6 +239,8 @@ const AnalysisResult: React.FC<AnalysisResultProps> = ({ data, allergies, chatMe
           </div>
         </div>
       )}
+
+      {data.environmentalImpact && <EnvironmentalImpactDisplay data={data.environmentalImpact} />}
       
       {data.اقتراحات_بديلة && data.اقتراحات_بديلة.length > 0 && (
           <div className="mt-6">
