@@ -142,3 +142,39 @@ export interface MealAnalysisResponse {
     healthSummary: string;
     suggestions: string[];
 }
+
+// New types for implemented future features
+export interface SkinPhoto {
+  id: string;
+  date: string;
+  image: string;
+}
+
+export interface SkinAnalysisReport {
+    summary: string;
+    observations: string[];
+    recommendations: string[];
+}
+
+export interface WeeklyReportData {
+    summary: string;
+    trends: string[];
+    productSpotlight: {
+        productName: string;
+        reason: string;
+    };
+    personalizedTips: string[];
+}
+
+export interface PriceInfo {
+    retailer: string;
+    price: string;
+    url: string;
+    isLocal: boolean;
+}
+
+export interface PriceComparisonResult {
+    productName: string;
+    prices: PriceInfo[];
+    summary: string;
+}

@@ -4,10 +4,10 @@ import { XCircleIcon } from './icons/ResultIcons';
 import { FutureIcon } from './icons/ActionIcons';
 
 // Simple placeholder icons for demonstration
-const ReportIcon = () => <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />;
-const MealIcon = () => <path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.362-3.362 8.287 8.287 0 003 1.026z" />;
-const EarthIcon = () => <path d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3s4.5 4.03 4.5 9a9.004 9.004 0 01-4.5 9z" />;
-const PriceTagIcon = () => <path d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />;
+const ReportIcon = () => <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />;
+const EarthIcon = () => <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3s4.5 4.03 4.5 9a9.004 9.004 0 01-4.5 9z" />;
+const PriceTagIcon = () => <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3zM6 6h.008v.008H6V6z" />;
+const FaceWithDataIcon = () => <><path strokeLinecap="round" strokeLinejoin="round" d="M15.182 15.182a4.5 4.5 0 01-6.364 0M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9 9.75h.008v.008H9V9.75zm6 0h.008v.008H15V9.75z" /><path strokeLinecap="round" strokeLinejoin="round" d="M3 19.5v-1.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 18v1.5m-18 0v.75a2.25 2.25 0 002.25 2.25h13.5a2.25 2.25 0 002.25-2.25v-.75m-18 0h18" /></>;
 
 interface FutureFeaturesModalProps {
     isOpen: boolean;
@@ -33,8 +33,8 @@ const FutureFeaturesModal: React.FC<FutureFeaturesModalProps> = ({ isOpen, onClo
     if (!isOpen) return null;
 
     const features = [
+        { icon: <FaceWithDataIcon />, title: "متتبع حالة البشرة", description: "التقط صورًا دورية لبشرتك لتتبع التغيرات وتحليل فعاليتها مع المنتجات المستخدمة." },
         { icon: <ReportIcon />, title: "تقارير أسبوعية مخصصة", description: "احصل على ملخص أسبوعي لاستخدامك للمنتجات ونصائح مخصصة بناءً على تحليلاتك." },
-        { icon: <MealIcon />, title: "دمج مع مخطط الوجبات", description: "اربط تحليلات المنتجات الغذائية مباشرة بخطط وجباتك اليومية لتحقيق أهدافك الصحية." },
         { icon: <EarthIcon />, title: "تقييم الأثر البيئي", description: "اعرف مدى استدامة منتجاتك وتأثيرها على البيئة، من التعبئة والتغليف إلى المكونات." },
         { icon: <PriceTagIcon />, title: "مقارنة الأسعار والعروض", description: "ابحث عن أفضل الأسعار للمنتجات التي تحبها وبدائلها في المتاجر القريبة منك." },
     ];

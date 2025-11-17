@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type, Chat, Modality } from "@google/genai";
-import { AnalysisResponse, UserProfile, ComparisonResponse, RoutineAnalysis, MedicationAnalysisResponse, MealAnalysisResponse } from '../types';
+import { AnalysisResponse, UserProfile, ComparisonResponse, RoutineAnalysis, MedicationAnalysisResponse, MealAnalysisResponse, SkinAnalysisReport, WeeklyReportData, PriceComparisonResult } from '../types';
 
 const API_KEY = process.env.API_KEY;
 if (!API_KEY) {
@@ -153,7 +153,7 @@ const analysisSchema = {
                 properties: {
                     "الادعاء_التسويقي": { type: Type.STRING },
                     "التحليل_والتكذيب_العلمي": { type: Type.STRING },
-                    "مصادر_علمية": { type: Type.ARRAY, items: { type: Type.STRING } }
+                    "مصدر_علمية": { type: Type.ARRAY, items: { type: Type.STRING } }
                 },
                 required: ["الادعاء_التسويقي", "التحليل_والتكذيب_العلمي", "مصادر_علمية"]
             }
@@ -460,4 +460,135 @@ export const createGeneralChat = (history: any[]): Chat => {
         },
         history,
     });
+};
+
+// =================================================================================
+// NEW FEATURE SERVICES
+// =================================================================================
+
+const skinAnalysisSchema = {
+    type: Type.OBJECT,
+    properties: {
+        summary: { type: Type.STRING, description: "ملخص عام للتغيرات الملحوظة بين الصورتين." },
+        observations: { type: Type.ARRAY, items: { type: Type.STRING }, description: "قائمة بالملاحظات المحددة (e.g., 'انخفاض في الاحمرار', 'زيادة في الترطيب الظاهري')." },
+        recommendations: { type: Type.ARRAY, items: { type: Type.STRING }, description: "توصيات عامة (e.g., 'استمر في استخدام المنتج X', 'فكر في إضافة مرطب')." },
+    },
+    required: ["summary", "observations", "recommendations"]
+};
+
+export const analyzeSkinProgress = async (
+    images: { data: string, mimeType: string }[],
+    profile: UserProfile
+): Promise<SkinAnalysisReport> => {
+    const systemInstruction = `أنت خبير أمراض جلدية يعمل بالذكاء الاصطناعي. مهمتك هي مقارنة سلسلتين من صور البشرة (قبل وبعد) وتقديم تحليل للتغيرات. كن موضوعيًا وركز على التغيرات البصرية مثل الاحمرار، ملمس البشرة، البقع، والترطيب الظاهري. قدم ملاحظاتك كتوصيات عامة للعناية بالبشرة، وليس كتشخيص طبي. يجب أن يكون الإخراج كائن JSON نقي. يجب أن تكون جميع النصوص باللغة العربية.`;
+
+    const imageParts = images.map(img => ({ inlineData: { data: img.data, mimeType: img.mimeType } }));
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-pro',
+        contents: [{ parts: [
+            ...imageParts,
+            { text: `حلل التقدم المحرز في حالة البشرة بين هذه الصور. الصورة الأولى هي 'قبل' والأخيرة هي 'بعد'. ملف المستخدم الشخصي: نوع البشرة ${profile.skinType}. قدم تحليلك بتنسيق JSON.` }
+        ] }],
+        config: {
+            systemInstruction,
+            responseMimeType: 'application/json',
+            responseSchema: skinAnalysisSchema
+        }
+    });
+    const jsonText = extractJson(response.text);
+    return JSON.parse(jsonText) as SkinAnalysisReport;
+};
+
+const weeklyReportSchema = {
+    type: Type.OBJECT,
+    properties: {
+        summary: { type: Type.STRING, description: "ملخص عام لنشاط المستخدم خلال الأسبوع." },
+        trends: { type: Type.ARRAY, items: { type: Type.STRING }, description: "اتجاهات ملحوظة (e.g., 'ركزت على منتجات الترطيب هذا الأسبوع', 'تجنبت المكونات X')." },
+        productSpotlight: {
+            type: Type.OBJECT,
+            properties: {
+                productName: { type: Type.STRING, description: "اسم المنتج الأكثر تحليلاً أو الأبرز." },
+                reason: { type: Type.STRING, description: "سبب تسليط الضوء على هذا المنتج." },
+            },
+            required: ["productName", "reason"]
+        },
+        personalizedTips: { type: Type.ARRAY, items: { type: Type.STRING }, description: "نصائح مخصصة بناءً على المنتجات التي تم تحليلها وملف المستخدم." },
+    },
+    required: ["summary", "trends", "productSpotlight", "personalizedTips"]
+};
+
+export const generateWeeklyReport = async (
+    history: AnalysisResponse[],
+    profile: UserProfile
+): Promise<WeeklyReportData> => {
+    const systemInstruction = `أنت محلل بيانات متخصص في سلوك المستهلك للعناية بالبشرة. مهمتك هي إنشاء تقرير أسبوعي مخصص بناءً على سجل تحليلات منتجات المستخدم. يجب أن يكون التقرير ثاقبًا ومفيدًا. يجب أن يكون الإخراج كائن JSON نقي. يجب أن تكون جميع النصوص باللغة العربية.`;
+    
+    const prompt = `
+        أنشئ تقريرًا أسبوعيًا لهذا المستخدم بناءً على سجل تحليلاته وملفه الشخصي.
+        - الملف الشخصي: ${JSON.stringify(profile)}
+        - سجل التحليلات لهذا الأسبوع: ${JSON.stringify(history)}
+        قدم التقرير بتنسيق JSON.
+    `;
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{ parts: [{ text: prompt }] }],
+        config: {
+            systemInstruction,
+            responseMimeType: 'application/json',
+            responseSchema: weeklyReportSchema
+        }
+    });
+
+    const jsonText = extractJson(response.text);
+    return JSON.parse(jsonText) as WeeklyReportData;
+};
+
+const priceComparisonSchema = {
+    type: Type.OBJECT,
+    properties: {
+        productName: { type: Type.STRING },
+        prices: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    retailer: { type: Type.STRING, description: "اسم المتجر (e.g., 'Jumia', 'صيدلية محلية')." },
+                    price: { type: Type.STRING, description: "السعر التقديري مع العملة (e.g., '3,500 DZD')." },
+                    url: { type: Type.STRING, description: "رابط وهمي للمنتج." },
+                    isLocal: { type: Type.BOOLEAN, description: "هل المتجر محلي بناءً على موقع المستخدم." },
+                },
+                required: ["retailer", "price", "url", "isLocal"]
+            }
+        },
+        summary: { type: Type.STRING, description: "ملخص قصير حول توفر المنتج وأفضل الصفقات المحتملة." }
+    },
+    required: ["productName", "prices", "summary"]
+};
+
+export const findProductPrices = async (
+    productName: string,
+    userLocation: { latitude: number, longitude: number }
+): Promise<PriceComparisonResult> => {
+    const systemInstruction = `أنت محرك بحث أسعار وهمي. مهمتك هي محاكاة البحث عن أسعار منتج معين عبر الإنترنت وفي المتاجر المحلية. **هذه محاكاة**، والبيانات ليست حقيقية أو مباشرة. استخدم معرفتك العامة لإنشاء قائمة معقولة من تجار التجزئة والأسعار التقديرية. قم بتضمين إخلاء مسؤولية بأن الأسعار تقديرية. يجب أن يكون الإخراج كائن JSON نقي. يجب أن تكون جميع النصوص باللغة العربية.`;
+
+    const prompt = `
+        **طلب محاكاة**: ابحث عن أسعار لمنتج "${productName}". موقع المستخدم بالقرب من خط عرض ${userLocation.latitude} وخط طول ${userLocation.longitude}. 
+        قدم قائمة من 3-5 تجار تجزئة (مزيج من المتاجر الإلكترونية والمحلية المحتملة) بأسعار تقديرية.
+        أجب بتنسيق JSON.
+    `;
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{ parts: [{ text: prompt }] }],
+        config: {
+            systemInstruction,
+            responseMimeType: 'application/json',
+            responseSchema: priceComparisonSchema
+        }
+    });
+    
+    const jsonText = extractJson(response.text);
+    return JSON.parse(jsonText) as PriceComparisonResult;
 };

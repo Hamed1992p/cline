@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 export const TagIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -46,5 +47,78 @@ export const SendIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 export const LeafIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.362-3.362A8.287 8.287 0 0015.362 5.214z" />
+  </svg>
+);
+
+export const DnaIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 100 100"
+    {...props}
+  >
+    <defs>
+      <linearGradient id="dnaStrandGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#818cf8" /> {/* indigo-400 */}
+        <stop offset="50%" stopColor="#c084fc" /> {/* purple-400 */}
+        <stop offset="100%" stopColor="#f472b6" /> {/* pink-400 */}
+      </linearGradient>
+      <filter id="dnaGlow" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
+        <feMerge>
+          <feMergeNode in="blur" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+    </defs>
+    <style>
+      {`
+        .dna-base-pair {
+          animation: dna-pair-glow 3s ease-in-out infinite;
+          transform-origin: center;
+        }
+        @keyframes dna-pair-glow {
+          0%, 100% { opacity: 0.6; }
+          50% { opacity: 1; }
+        }
+        .dna-base-pair:nth-of-type(1) { animation-delay: 0s; }
+        .dna-base-pair:nth-of-type(2) { animation-delay: 0.2s; }
+        .dna-base-pair:nth-of-type(3) { animation-delay: 0.4s; }
+        .dna-base-pair:nth-of-type(4) { animation-delay: 0.6s; }
+        .dna-base-pair:nth-of-type(5) { animation-delay: 0.8s; }
+        .dna-base-pair:nth-of-type(6) { animation-delay: 1.0s; }
+        .dna-base-pair:nth-of-type(7) { animation-delay: 1.2s; }
+        .dna-base-pair:nth-of-type(8) { animation-delay: 1.4s; }
+      `}
+    </style>
+    <g transform="rotate(25 50 50)" filter="url(#dnaGlow)">
+      {/* Back strand */}
+      <path
+        d="M35,10 C65,25 35,55 65,70"
+        stroke="url(#dnaStrandGradient)"
+        strokeWidth="5"
+        strokeLinecap="round"
+        fill="none"
+        opacity="0.6"
+      />
+      
+      {/* Base pairs */}
+      <g strokeWidth="3" strokeLinecap="round">
+        <line x1="41" y1="14.5" x2="59" y2="20" stroke="#22d3ee" className="dna-base-pair" />
+        <line x1="38" y1="23" x2="62" y2="28" stroke="#34d399" className="dna-base-pair" />
+        <line x1="36" y1="32.5" x2="64" y2="37.5" stroke="#a78bfa" className="dna-base-pair" />
+        <line x1="35.5" y1="42.5" x2="64.5" y2="47.5" stroke="#f472b6" className="dna-base-pair" />
+        <line x1="36" y1="52.5" x2="64" y2="57.5" stroke="#fb923c" className="dna-base-pair" />
+        <line x1="38" y1="62" x2="62" y2="67" stroke="#fbbf24" className="dna-base-pair" />
+      </g>
+
+      {/* Front strand */}
+      <path
+        d="M65,10 C35,25 65,55 35,70"
+        stroke="url(#dnaStrandGradient)"
+        strokeWidth="5"
+        strokeLinecap="round"
+        fill="none"
+      />
+    </g>
   </svg>
 );

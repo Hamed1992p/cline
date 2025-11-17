@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, ReactNode } from 'react';
-import { AnalysisResponse, UserProfile, ScanHistoryItem, ChatMessage, ComparisonResponse, Routine, RoutineProduct, RoutineAnalysis, MedicationAnalysisResponse, MealAnalysisResponse, User } from './types';
-import { analyzeProductImage, analyzeProductText, compareProducts, analyzeRoutine, analyzeMedicationImage, analyzeMealImage, ai } from './services/geminiService';
+import { AnalysisResponse, UserProfile, ScanHistoryItem, ChatMessage, ComparisonResponse, Routine, RoutineProduct, RoutineAnalysis, MedicationAnalysisResponse, MealAnalysisResponse, User, SkinPhoto, SkinAnalysisReport, WeeklyReportData, PriceComparisonResult } from './types';
+import { analyzeProductImage, analyzeProductText, compareProducts, analyzeRoutine, analyzeMedicationImage, analyzeMealImage, analyzeSkinProgress, generateWeeklyReport, findProductPrices, ai } from './services/geminiService';
 import { Chat } from '@google/genai';
 import ImageUploader from './components/ImageUploader';
 import AnalysisResult from './components/AnalysisResult';
@@ -11,7 +11,7 @@ import AllergyManager from './components/AllergyManager';
 import { AllergyIcon } from './components/icons/AllergyIcon';
 import { UserProfileIcon, HistoryIcon } from './components/icons/DetailIcons';
 import { XCircleIcon, CheckCircleIcon } from './components/icons/ResultIcons';
-import { ScaleIcon, BarcodeIcon, RoutineIcon, MicrophoneIcon, LiveAnalysisIcon, ScanTextIcon, MedicationIcon, QuestionIcon, FutureIcon, MealIcon, FeatherIcon } from './components/icons/ActionIcons';
+import { ScaleIcon, BarcodeIcon, RoutineIcon, MicrophoneIcon, LiveAnalysisIcon, ScanTextIcon, MedicationIcon, QuestionIcon, MealIcon, FeatherIcon, SkinTrackerIcon, WeeklyReportIcon, PriceTagIcon } from './components/icons/ActionIcons';
 import { SearchIcon } from './components/icons/SearchIcon';
 import { UploadIcon } from './components/icons/UploadIcon';
 import BarcodeScanner from './components/BarcodeScanner';
@@ -25,7 +25,6 @@ import MealAnalysisResult from './components/MealAnalysisResult';
 import StarfieldBackground from './components/StarfieldBackground';
 import GeneralChat from './components/GeneralChat';
 import Notification from './components/Notification';
-import FutureFeaturesModal from './components/FutureFeaturesModal';
 import InstallPWAButton from './components/InstallPWAButton';
 import { SettingsIcon } from './components/icons/SettingsIcon';
 import Settings from './components/Settings';
@@ -33,6 +32,9 @@ import Search from './components/Search';
 import { BrainIcon } from './components/icons/BrainIcon';
 import LanguageSelector from './components/LanguageSelector';
 import Login from './components/Login';
+import SkinTracker from './components/SkinTracker';
+import WeeklyReport from './components/WeeklyReport';
+import PriceComparator from './components/PriceComparator';
 
 
 const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] => {
@@ -555,6 +557,9 @@ interface NotificationState {
   type: 'warning' | 'info' | 'success';
 }
 
+type InputMode = 'home' | 'image' | 'search' | 'barcode' | 'voice' | 'live' | 'scan-text' | 'medication' | 'general-chat' | 'meal' | 'skin-tracker' | 'weekly-report' | 'price-comparator';
+
+
 const App: React.FC = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
@@ -577,13 +582,12 @@ const App: React.FC = () => {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isRoutineManagerOpen, setIsRoutineManagerOpen] = useState(false);
-  const [isFutureModalOpen, setIsFutureModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
   const [chat, setChat] = useState<Chat | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   
-  const [inputMode, setInputMode] = useState<'home' | 'image' | 'search' | 'barcode' | 'voice' | 'live' | 'scan-text' | 'medication' | 'general-chat' | 'meal'>('home');
+  const [inputMode, setInputMode] = useState<InputMode>('home');
   const [isComparing, setIsComparing] = useState(false);
   const [comparisonResult, setComparisonResult] = useState<ComparisonResponse | null>(null);
   
@@ -599,6 +603,8 @@ const App: React.FC = () => {
 
   const [isAnalyzingMeal, setIsAnalyzingMeal] = useState(false);
   const [mealAnalysis, setMealAnalysis] = useState<MealAnalysisResponse | null>(null);
+  
+  const [productForPriceCheck, setProductForPriceCheck] = useState<string>('');
   
   const [notifications, setNotifications] = useState<NotificationState[]>([]);
 
@@ -849,6 +855,11 @@ const App: React.FC = () => {
         setIsComparing(false);
     }
   };
+  
+  const handleFindPrices = (productName: string) => {
+    setProductForPriceCheck(productName);
+    setInputMode('price-comparator');
+  };
 
   const handleOpenHistoryForRoutine = (routineType: 'morning' | 'evening') => {
       setActiveRoutineType(routineType);
@@ -961,6 +972,7 @@ const App: React.FC = () => {
     setInputMode('home');
     setMedicationAnalysis(null);
     setMealAnalysis(null);
+    setProductForPriceCheck('');
   };
 
   const handleSelectAnalysis = (item: ScanHistoryItem) => {
@@ -988,7 +1000,6 @@ const App: React.FC = () => {
     setIsRoutineManagerOpen(false);
     setComparisonResult(null);
     setRoutineAnalysisResult(null);
-    setIsFutureModalOpen(false);
     setIsSettingsOpen(false);
   };
 
@@ -1053,7 +1064,9 @@ const App: React.FC = () => {
     { id: 'medication', icon: MedicationIcon, label: 'دواء', description: 'تلخيص نشرة الدواء' },
     { id: 'meal', icon: MealIcon, label: 'وجبة', description: 'تقدير السعرات الحرارية' },
     { id: 'general-chat', icon: QuestionIcon, label: 'اسأل حامد', description: 'دردشة عامة مع AI' },
-    { id: 'future', icon: FutureIcon, label: 'مستقبلي', description: 'اكتشف ما هو قادم' },
+    { id: 'skin-tracker', icon: SkinTrackerIcon, label: 'متتبع البشرة', description: 'راقب تقدم بشرتك' },
+    { id: 'weekly-report', icon: WeeklyReportIcon, label: 'التقرير الأسبوعي', description: 'ملخصك الشخصي' },
+    { id: 'price-comparator', icon: PriceTagIcon, label: 'مقارنة الأسعار', description: 'ابحث عن صفقات' },
     { id: 'scan-text', icon: ScanTextIcon, label: 'مسح النص', description: 'من الكاميرا' },
     { id: 'search', icon: SearchIcon, label: 'بحث', description: 'البحث في السجل' },
     { id: 'barcode', icon: BarcodeIcon, label: 'باركود', description: 'مسح سريع' },
@@ -1085,7 +1098,7 @@ const App: React.FC = () => {
   } else if (analysis) {
       content = (
           <div className="w-full transition-all duration-500 ease-in-out animate-fade-in">
-              <AnalysisResult data={analysis} allergies={allergies} chatMessages={chatMessages} onSendMessage={handleSendMessage} />
+              <AnalysisResult data={analysis} allergies={allergies} chatMessages={chatMessages} onSendMessage={handleSendMessage} onFindPrices={handleFindPrices} />
               <div className="text-center mt-8">
                   <button onClick={resetState} className="bg-gradient-to-r from-teal-500 to-cyan-600 text-white font-bold py-3 px-10 rounded-full transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-cyan-500/50 shadow-[0_0_15px_rgba(45,212,191,0.4),0_0_30px_rgba(45,212,191,0.2)] hover:shadow-[0_0_25px_rgba(45,212,191,0.6),0_0_50px_rgba(45,212,191,0.4)] active:translate-y-px">
                       تحليل منتج آخر
@@ -1116,16 +1129,7 @@ const App: React.FC = () => {
           </div>
       );
   } else if (inputMode === 'home') {
-      content = <HomePage
-                    modes={modes}
-                    onModeSelect={(modeId) => {
-                        if (modeId === 'future') {
-                            setIsFutureModalOpen(true);
-                        } else {
-                            setInputMode(modeId as any);
-                        }
-                    }}
-                />;
+      content = <HomePage modes={modes} onModeSelect={(modeId) => setInputMode(modeId as InputMode)} />;
   } else {
       content = (
         <div className="w-full max-w-2xl animate-fade-in">
@@ -1169,6 +1173,15 @@ const App: React.FC = () => {
                     promptText="صورة وجبتك الغذائية"
                     subPromptText="التقط صورة واضحة لتحليلها"
                 />
+            )}
+            {inputMode === 'skin-tracker' && (
+                <SkinTracker profile={profile} onClose={() => setInputMode('home')} />
+            )}
+            {inputMode === 'weekly-report' && (
+                <WeeklyReport scanHistory={scanHistory} profile={profile} onClose={() => setInputMode('home')} />
+            )}
+             {inputMode === 'price-comparator' && (
+                <PriceComparator productName={productForPriceCheck} onClose={() => { setInputMode('home'); setProductForPriceCheck(''); }} />
             )}
             {inputMode === 'scan-text' && (
                 <TextScanner
@@ -1292,7 +1305,6 @@ const App: React.FC = () => {
       {comparisonResult && <ComparisonResult data={comparisonResult} onClose={() => setComparisonResult(null)} />}
       <RoutineManager isOpen={isRoutineManagerOpen} onClose={() => setIsRoutineManagerOpen(false)} routine={routines} setRoutine={setRoutines} onOpenHistory={handleOpenHistoryForRoutine} onAnalyze={handleAnalyzeRoutine} />
       {routineAnalysisResult && <RoutineAnalysisResult data={routineAnalysisResult} onClose={() => setRoutineAnalysisResult(null)} />}
-      <FutureFeaturesModal isOpen={isFutureModalOpen} onClose={() => setIsFutureModalOpen(false)} />
       <Settings
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}

@@ -22,12 +22,14 @@ const primaryColorMap: { [key: string]: { color: string; glowRgb: string } } = {
 };
 
 const secondaryColorMap: { [key: string]: { color: string; glowRgb: string } } = {
+    'skin-tracker': { color: '#f472b6', glowRgb: '244, 114, 182' }, // pink-400
+    'weekly-report': { color: '#a78bfa', glowRgb: '167, 139, 250' },// violet-400
+    'price-comparator': { color: '#c084fc', glowRgb: '192, 132, 252' }, // purple-400
     'scan-text':  { color: '#34d399', glowRgb: '52, 211, 153' }, // emerald-400
     search:       { color: '#fb923c', glowRgb: '251, 146, 60' },   // orange-400
     barcode:      { color: '#9ca3af', glowRgb: '156, 163, 175' },   // gray-400
     voice:        { color: '#fb7185', glowRgb: '251, 113, 133' },   // rose-400
     live:         { color: '#e11d48', glowRgb: '225, 29, 72' },     // rose-600
-    future:       { color: '#c084fc', glowRgb: '192, 132, 252' },   // purple-400
 }
 
 
@@ -65,7 +67,7 @@ const HomePage: React.FC<HomePageProps> = ({ modes, onModeSelect }) => {
                 })}
             </div>
              
-             <div className="w-full max-w-4xl mt-8 pt-8 border-t border-gray-700/50">
+             <div className="w-full max-w-5xl mt-8 pt-8 border-t border-gray-700/50">
                  <h3 className="text-center text-xl font-semibold text-gray-400 mb-6">أدوات إضافية</h3>
                  <div className="flex flex-wrap justify-center gap-4">
                     {secondaryModes.map(mode => {
@@ -74,16 +76,12 @@ const HomePage: React.FC<HomePageProps> = ({ modes, onModeSelect }) => {
                             '--node-color': colors.color,
                             '--node-glow-color-rgb': colors.glowRgb,
                         } as React.CSSProperties;
-                        const isFutureNode = mode.id === 'future';
                         return (
-                            <button key={mode.id} className="relative flex flex-col items-center gap-2 group p-3 rounded-lg w-24 h-24 justify-center transition-colors hover:bg-white/5" style={style} onClick={() => onModeSelect(mode.id)}>
+                            <button key={mode.id} className="relative flex flex-col items-center gap-2 group p-3 rounded-lg w-28 h-28 justify-center transition-colors hover:bg-white/5" style={style} onClick={() => onModeSelect(mode.id)}>
                                 <div className="w-12 h-12 flex items-center justify-center rounded-full bg-slate-800 border border-gray-700 group-hover:border-[var(--node-color)] group-hover:shadow-[0_0_10px_rgba(var(--node-glow-color-rgb),0.5)] transition-all">
                                      <mode.icon className="w-6 h-6 text-gray-400 group-hover:text-[var(--node-color)] transition-colors" />
                                 </div>
-                                <span className="text-sm text-gray-300 group-hover:text-white transition-colors">{mode.label}</span>
-                                {isFutureNode && (
-                                    <div className="absolute inset-0 border border-purple-500 rounded-lg animate-pulse" style={{ animationDuration: '3s' }}></div>
-                                )}
+                                <span className="text-sm text-center text-gray-300 group-hover:text-white transition-colors">{mode.label}</span>
                             </button>
                         );
                     })}

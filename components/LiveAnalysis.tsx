@@ -23,6 +23,34 @@ type ConversationEntry = {
     text: string;
 };
 
+const blobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (reader.result) {
+          resolve((reader.result as string).split(',')[1]);
+        } else {
+          reject(new Error("Failed to read blob as base64."));
+        }
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+};
+
+const createAudioBlob = (data: Float32Array): Blob => {
+    const l = data.length;
+    const int16 = new Int16Array(l);
+    for (let i = 0; i < l; i++) {
+        const s = Math.max(-1, Math.min(1, data[i]));
+        int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+    return {
+        data: encode(new Uint8Array(int16.buffer)),
+        mimeType: 'audio/pcm;rate=16000',
+    };
+};
+
 const LiveAnalysis: React.FC<LiveAnalysisProps> = ({ onCancel, allergies, profile }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -52,7 +80,7 @@ const LiveAnalysis: React.FC<LiveAnalysisProps> = ({ onCancel, allergies, profil
       frameIntervalRef.current = null;
     }
     if (sessionPromiseRef.current) {
-      sessionPromiseRef.current.then(session => session.close());
+      sessionPromiseRef.current.then(session => session.close()).catch(console.error);
       sessionPromiseRef.current = null;
     }
     if (scriptProcessorRef.current) {
@@ -60,7 +88,7 @@ const LiveAnalysis: React.FC<LiveAnalysisProps> = ({ onCancel, allergies, profil
         scriptProcessorRef.current = null;
     }
     if (inputAudioContextRef.current && inputAudioContextRef.current.state !== 'closed') {
-        inputAudioContextRef.current.close();
+        inputAudioContextRef.current.close().catch(console.error);
     }
     setStatus(prev => (prev === 'error' ? 'error' : 'ended'));
   }, []);
@@ -85,7 +113,7 @@ const LiveAnalysis: React.FC<LiveAnalysisProps> = ({ onCancel, allergies, profil
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: { facingMode: 'environment' } });
       mediaStreamRef.current = stream;
       videoRef.current.srcObject = stream;
-      videoRef.current.play().catch(console.error);
+      await videoRef.current.play();
 
       let nextStartTime = 0;
       inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
@@ -100,18 +128,17 @@ const LiveAnalysis: React.FC<LiveAnalysisProps> = ({ onCancel, allergies, profil
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
         callbacks: {
           onopen: () => {
-            const source = inputAudioContextRef.current!.createMediaStreamSource(stream);
+            const audioSource = inputAudioContextRef.current!.createMediaStreamSource(stream);
             scriptProcessorRef.current = inputAudioContextRef.current!.createScriptProcessor(4096, 1, 1);
             
             scriptProcessorRef.current.onaudioprocess = (audioProcessingEvent) => {
               const inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
-              const pcmBlob: Blob = {
-                data: encode(new Uint8Array(new Int16Array(inputData.map(v => v * 32768)).buffer)),
-                mimeType: 'audio/pcm;rate=16000',
-              };
-              sessionPromiseRef.current?.then((session) => session.sendRealtimeInput({ media: pcmBlob }));
+              const audioBlob = createAudioBlob(inputData);
+              sessionPromiseRef.current?.then((session) => {
+                 if (session) session.sendRealtimeInput({ media: audioBlob });
+              });
             };
-            source.connect(scriptProcessorRef.current);
+            audioSource.connect(scriptProcessorRef.current);
             scriptProcessorRef.current.connect(inputAudioContextRef.current!.destination);
 
             const canvasEl = canvasRef.current!;
@@ -125,16 +152,14 @@ const LiveAnalysis: React.FC<LiveAnalysisProps> = ({ onCancel, allergies, profil
               ctx.drawImage(videoEl, 0, 0, videoEl.videoWidth, videoEl.videoHeight);
               canvasEl.toBlob(async (blob) => {
                 if (blob) {
-                  const reader = new FileReader();
-                  reader.onloadend = () => {
-                      const base64Data = (reader.result as string).split(',')[1];
-                      if(base64Data){
-                        sessionPromiseRef.current?.then((session) => {
-                            session.sendRealtimeInput({ media: { data: base64Data, mimeType: 'image/jpeg' } });
-                        });
-                      }
-                  };
-                  reader.readAsDataURL(blob);
+                  try {
+                    const base64Data = await blobToBase64(blob);
+                    await sessionPromiseRef.current?.then((session) => {
+                      if (session) session.sendRealtimeInput({ media: { data: base64Data, mimeType: 'image/jpeg' } });
+                    });
+                  } catch(e) {
+                      console.error("Error converting blob to base64:", e);
+                  }
                 }
               }, 'image/jpeg', JPEG_QUALITY);
             }, 1000 / FRAME_RATE);
@@ -232,7 +257,7 @@ const LiveAnalysis: React.FC<LiveAnalysisProps> = ({ onCancel, allergies, profil
             {/* Video Section */}
             <div className="w-full md:w-1/2 flex flex-col gap-4">
                 <div className={`w-full aspect-square bg-black rounded-lg overflow-hidden relative border-2 transition-all duration-300 ${status === 'live' ? 'border-teal-500 shadow-[0_0_15px_rgba(45,212,191,0.5)]' : 'border-transparent'}`}>
-                    <video ref={videoRef} className="w-full h-full object-cover" muted />
+                    <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
                     <canvas ref={canvasRef} className="hidden" />
                     <StatusIndicator />
                 </div>

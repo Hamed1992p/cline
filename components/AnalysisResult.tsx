@@ -1,16 +1,20 @@
+
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { AnalysisResponse, ChatMessage, EnvironmentalImpact } from '../types';
 import ItemCard from './ItemCard';
 import { CheckCircleIcon, XCircleIcon, QuestionMarkCircleIcon, ExclamationTriangleIcon } from './icons/ResultIcons';
-import { TagIcon, BoxIcon, CategoryIcon, ShareIcon, LeafIcon } from './icons/DetailIcons';
+import { TagIcon, BoxIcon, CategoryIcon, ShareIcon, LeafIcon, DnaIcon } from './icons/DetailIcons';
 import { SuggestionIcon } from './icons/SuggestionIcon';
 import ChatFollowUp from './ChatFollowUp';
+import { PriceTagIcon } from './icons/ActionIcons';
 
 interface AnalysisResultProps {
   data: AnalysisResponse;
   allergies: string[];
   chatMessages: ChatMessage[];
   onSendMessage: (message: string) => void;
+  onFindPrices: (productName: string) => void;
 }
 
 const ScoreDisplay: React.FC<{ score: { النقاط: number; التقييم: string; السبب: string; }, color: string }> = ({ score, color }) => {
@@ -93,7 +97,7 @@ const EnvironmentalImpactDisplay: React.FC<{ data: EnvironmentalImpact }> = ({ d
 };
 
 
-const AnalysisResult: React.FC<AnalysisResultProps> = ({ data, allergies, chatMessages, onSendMessage }) => {
+const AnalysisResult: React.FC<AnalysisResultProps> = ({ data, allergies, chatMessages, onSendMessage, onFindPrices }) => {
   const [themeColor, setThemeColor] = useState('teal');
 
   useEffect(() => {
@@ -182,6 +186,13 @@ const AnalysisResult: React.FC<AnalysisResultProps> = ({ data, allergies, chatMe
         <p className="mt-4 text-gray-700 dark:text-gray-300">{data.ملخص_التحليل}</p>
       </div>
 
+      <div className="my-4">
+        <button onClick={() => onFindPrices(data.اسم_المنتج)} className="w-full flex items-center justify-center gap-2 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-semibold py-2 px-4 rounded-lg border border-purple-500/30 hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors">
+            <PriceTagIcon className="w-5 h-5" />
+            البحث عن أفضل سعر (محاكاة)
+        </button>
+      </div>
+
       {data.التقييم_العام && (
         <div className="my-6">
             <h3 className={`text-xl font-bold ${currentColors.text} mb-2 text-center [text-shadow:0_0_8px_var(--glow-color)]`}>التقييم العام</h3>
@@ -190,7 +201,11 @@ const AnalysisResult: React.FC<AnalysisResultProps> = ({ data, allergies, chatMe
       )}
       
       {tabs.length > 0 && activeTab && (
-        <div className="mt-6">
+        <div className="mt-8">
+           <h3 className={`text-2xl font-bold ${currentColors.text} mb-4 flex items-center gap-3 justify-center [text-shadow:0_0_12px_var(--glow-color)]`}>
+            <DnaIcon className="w-8 h-8" />
+            تحليل المكونات
+          </h3>
           <div className="flex sm:space-x-2 justify-center overflow-x-auto border-b border-slate-300 dark:border-gray-700">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
