@@ -1,6 +1,5 @@
 
-
-import { GoogleGenAI, Type, Chat } from "@google/genai";
+import { GoogleGenAI, Type, Chat, Modality } from "@google/genai";
 import { AnalysisResponse, UserProfile, ComparisonResponse, RoutineAnalysis, MedicationAnalysisResponse, MealAnalysisResponse } from '../types';
 
 const API_KEY = process.env.API_KEY;
@@ -9,6 +8,35 @@ if (!API_KEY) {
 }
 
 export const ai = new GoogleGenAI({ apiKey: API_KEY });
+
+/**
+ * Extracts a JSON object from a string, handling markdown code blocks.
+ * @param text The string to extract JSON from.
+ * @returns A string containing the JSON object.
+ */
+const extractJson = (text: string): string => {
+    const jsonRegex = /```(json)?\s*([\s\S]*?)\s*```/;
+    const match = text.match(jsonRegex);
+    if (match && match[2]) {
+        return match[2].trim();
+    }
+
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        return text.substring(firstBrace, lastBrace + 1).trim();
+    }
+    
+    // Fallback for array responses
+    const firstBracket = text.indexOf('[');
+    const lastBracket = text.lastIndexOf(']');
+    if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+        return text.substring(firstBracket, lastBracket + 1).trim();
+    }
+    
+    return text;
+};
+
 
 export const generateLiveSystemInstruction = (allergies: string[], profile: UserProfile) => {
     let instruction = `أنت "حامد AI"، مساعد جزائري ذكي ومساعد في الوقت الفعلي. مهمتك هي التفاعل مع المستخدم من خلال الصوت أثناء مشاهدة بث مباشر من كاميرته. تحدث باللهجة الجزائرية البسيطة والمهذبة. قم بوصف ما تراه في الكاميرا وأجب عن أسئلة المستخدم حول المنتجات التي يعرضها لك. كن سريعًا ومختصرًا ومفيدًا.`;
@@ -33,7 +61,7 @@ export const generateLiveSystemInstruction = (allergies: string[], profile: User
 };
 
 
-const generateSystemInstruction = (allergies: string[], profile: UserProfile) => {
+const generateSystemInstruction = (allergies: string[], profile: UserProfile, language: string) => {
     let instruction = `أنت "خبير تحليل مكونات المنتجات الذكي"، متخصص في فحص صور المنتجات لتقييم مكوناتها وممارساتها التسويقية بناءً على أدلة علمية صارمة. مهمتك هي تزويد المستخدم بتحليل موضوعي ومفصل، مع تسليط الضوء على المكونات المفيدة والضارة والمشكوك فيها، وأي ممارسات تسويقية خادعة. قم أيضًا باستخلاص اسم المنتج، علامته التجارية، حجمه، وفئته. بالإضافة إلى ذلك، قم بتقديم قائمة بمنتجات بديلة أكثر أمانًا أو طبيعية بناءً على التحليل. يجب أن يكون الإخراج النهائي عبارة عن كائن JSON نقي وصالح (pure JSON object) يتبع المخطط المحدد بدقة. لا تقم بتضمين أي نص إضافي قبل أو بعد كائن JSON. لا تستخدم markdown.`;
 
     instruction += "\n\n**قم بتخصيص التحليل للمستخدم التالي:**\n";
@@ -55,16 +83,8 @@ const generateSystemInstruction = (allergies: string[], profile: UserProfile) =>
 
     instruction += "\n**مهمة إضافية**: بناءً على التحليل الشامل، قم بتوفير 'تقييم عام' للمنتج يتضمن تقييمًا حرفيًا (من A+ إلى F)، ونقاطًا من 100، وسببًا موجزًا لهذا التقييم.\n";
     instruction += "\n**مهمة إضافية 2 (بيئية)**: قم بتقييم الأثر البيئي للمنتج. انظر إلى مواد التعبئة والتغليف (بلاستيك، زجاج، ورق معاد تدويره)، والمكونات (مثل زيت النخيل المستدام)، وأي شهادات بيئية ظاهرة. قدم تقييمًا من 100، ملخصًا، وجوانب إيجابية وسلبية.\n";
-
-    instruction += `
-    مبادئ التوجيه:
-    1.  **الدقة العلمية أولاً**: كل تقييم يجب أن يستند إلى أدلة علمية موثوقة.
-    2.  **الموضوعية والحياد**: تجنب أي تحيز أو رأي شخصي؛ ركز فقط على الحقائق.
-    3.  **اقتراحات ذكية**: قدم 2-3 اقتراحات لمنتجات بديلة تكون أكثر أمانًا أو طبيعية.
-    4.  **لا نصيحة طبية**: لا تقدم أبدًا أي نصيحة صحية أو طبية. التحليل هو لأغراض معلوماتية فقط.
-    5.  **تعريب كامل**: يجب أن تكون جميع المخرجات (الأوصاف، الملخصات، العناوين) باللغة العربية الفصحى.
-    6.  **معالجة الغموض**: إذا كانت الصورة غير واضحة، قم بتحليل ما يمكنك رؤيته أو اذكر في الملخص أن بعض المكونات كانت غير واضحة.
-    `;
+    instruction += `\n\n**متطلب لغة الإخراج**: هام جداً! يجب أن يكون الرد كائن JSON خالص. كل القيم النصية داخل كائن JSON هذا (مثل الأوصاف، الملخصات، الأسماء، التقييمات) يجب أن تكون مكتوبة بـ **${language}**. ومع ذلك، فإن مفاتيح JSON نفسها (مثل "اسم_المنتج"، "ملخص_التحليل") يجب أن تظل باللغة العربية تماماً كما هو محدد في المخطط المقدم لضمان التحليل الصحيح. لا تضف أي نص قبل أو بعد كائن JSON.`;
+    
     return instruction;
 };
 
@@ -97,7 +117,7 @@ const analysisSchema = {
                     "الوصف_والفوائد": { type: Type.STRING, description: "وصف مفصل باللغة العربية يوضح الفوائد المثبتة علميًا." },
                     "مصادر_علمية": { type: Type.ARRAY, items: { type: Type.STRING } }
                 },
-                required: ["الاسم_العربي", "الاسم_العلمي_او_الإنجليزي", "الوصف_والفوائد", "مصادر_علمية"]
+                 required: ["الاسم_العربي", "الاسم_العلمي_او_الإنجليزي", "الوصف_والفوائد", "مصادر_علمية"]
             }
         },
         "المكونات_السلبية": {
@@ -107,10 +127,10 @@ const analysisSchema = {
                 properties: {
                     "الاسم_العربي": { type: Type.STRING },
                     "الاسم_العلمي_او_الإنجليزي": { type: Type.STRING },
-                    "الوصف_والمخاطر": { type: Type.STRING, description: "وصف مفصل باللغة العربية يوضح المخاطر أو الآثار الجانبية المثبتة علميًا." },
+                    "الوصف_والمخاطر": { type: Type.STRING, description: "وصف مفصل باللغة العربية يوضح المخاطر المثبتة علميًا." },
                     "مصادر_علمية": { type: Type.ARRAY, items: { type: Type.STRING } }
                 },
-                required: ["الاسم_العربي", "الاسم_العلمي_او_الإنجليزي", "الوصف_والمخاطر", "مصادر_علمية"]
+                 required: ["الاسم_العربي", "الاسم_العلمي_او_الإنجليزي", "الوصف_والمخاطر", "مصادر_علمية"]
             }
         },
         "المكونات_المشكوك_فيها": {
@@ -120,7 +140,7 @@ const analysisSchema = {
                 properties: {
                     "الاسم_العربي": { type: Type.STRING },
                     "الاسم_العلمي_او_الإنجليزي": { type: Type.STRING },
-                    "الوصف_والتساؤلات": { type: Type.STRING, description: "وصف مفصل باللغة العربية يوضح سبب الشك أو عدم وجود أدلة كافية." },
+                    "الوصف_والتساؤلات": { type: Type.STRING, description: "وصف مفصل باللغة العربية يوضح سبب الشك أو الجدل حول المكون." },
                     "مصادر_علمية": { type: Type.ARRAY, items: { type: Type.STRING } }
                 },
                 required: ["الاسم_العربي", "الاسم_العلمي_او_الإنجليزي", "الوصف_والتساؤلات", "مصادر_علمية"]
@@ -132,103 +152,103 @@ const analysisSchema = {
                 type: Type.OBJECT,
                 properties: {
                     "الادعاء_التسويقي": { type: Type.STRING },
-                    "التحليل_والتكذيب_العلمي": { type: Type.STRING, description: "تحليل باللغة العربية يوضح لماذا هذا الادعاء قد يكون مضللاً." },
+                    "التحليل_والتكذيب_العلمي": { type: Type.STRING },
                     "مصادر_علمية": { type: Type.ARRAY, items: { type: Type.STRING } }
                 },
                 required: ["الادعاء_التسويقي", "التحليل_والتكذيب_العلمي", "مصادر_علمية"]
             }
         },
         "اقتراحات_بديلة": {
-            type: Type.ARRAY,
-            description: "قائمة بالمنتجات البديلة المقترحة.",
+             type: Type.ARRAY,
             items: {
                 type: Type.OBJECT,
                 properties: {
-                    "اسم_المنتج_البديل": { type: Type.STRING, description: "اسم المنتج البديل المقترح." },
-                    "السبب": { type: Type.STRING, description: "سبب اقتراح هذا المنتج البديل." }
+                    "اسم_المنتج_البديل": { type: Type.STRING },
+                    "السبب": { type: Type.STRING }
                 },
-                required: ["اسم_المنتج_البديل", "السبب"]
+                 required: ["اسم_المنتج_البديل", "السبب"]
             }
         },
         "environmentalImpact": {
             type: Type.OBJECT,
-            description: "تقييم الأثر البيئي للمنتج.",
             properties: {
-                "score": { type: Type.INTEGER, description: "تقييم رقمي من 0 إلى 100 لمدى صداقة المنتج للبيئة." },
-                "rating": { type: Type.STRING, description: "تقييم وصفي (e.g., 'ممتاز', 'متوسط', 'ضعيف')." },
-                "summary": { type: Type.STRING, description: "ملخص موجز للأثر البيئي." },
-                "positiveAspects": { type: Type.ARRAY, items: { type: Type.STRING }, description: "الجوانب الإيجابية بيئيًا." },
-                "negativeAspects": { type: Type.ARRAY, items: { type: Type.STRING }, description: "الجوانب السلبية بيئيًا." }
+                "score": { type: Type.INTEGER },
+                "rating": { type: Type.STRING },
+                "summary": { type: Type.STRING },
+                "positiveAspects": { type: Type.ARRAY, items: { type: Type.STRING } },
+                "negativeAspects": { type: Type.ARRAY, items: { type: Type.STRING } }
             },
             required: ["score", "rating", "summary", "positiveAspects", "negativeAspects"]
         },
-        "ملاحظات_إضافية": { type: Type.STRING, description: "أي ملاحظات عامة أو توصيات لتحسين المنتج (دون تقديم نصيحة مباشرة للمستخدم)." }
+        "ملاحظات_إضافية": { type: Type.STRING }
     },
-    required: ["اسم_المنتج", "العلامة_التجارية", "الحجم_او_الوزن", "فئة_المنتج", "ملخص_التحليل", "التقييم_العام", "المكونات_الإيجابية", "المكونات_السلبية", "المكونات_المشكوك_فيها", "الممارسات_التسويقية_الخادعة", "environmentalImpact", "ملاحظات_إضافية"]
+    required: ["اسم_المنتج", "ملخص_التحليل", "المكونات_الإيجابية", "المكونات_السلبية", "المكونات_المشكوك_فيها", "الممارسات_التسويقية_الخادعة", "ملاحظات_إضافية"]
 };
 
+export const analyzeProductImage = async (
+    base64Data: string,
+    mimeType: string,
+    allergies: string[],
+    profile: UserProfile,
+    language: string
+): Promise<AnalysisResponse> => {
+    const systemInstruction = generateSystemInstruction(allergies, profile, language);
+    const imagePart = {
+        inlineData: {
+            data: base64Data,
+            mimeType: mimeType,
+        },
+    };
+    const textPart = {
+        text: 'قم بتحليل هذا المنتج. استخدم قدراتك المتقدمة في التعرف الضوئي على الحروف (OCR) لاستخراج قائمة المكونات بدقة عالية من الصورة، حتى لو كان النص صغيراً أو بلغات متعددة (مثل العربية والإنجليزية والفرنسية). بعد ذلك، قم بتحليل المكونات بالكامل وقدم الإجابة بتنسيق JSON بناءً على المخطط المقدم.',
+    };
 
-export const analyzeProductImage = async (imageBase64: string, mimeType: string, allergies: string[], profile: UserProfile): Promise<AnalysisResponse> => {
-    try {
-        const imagePart = {
-            inlineData: {
-                data: imageBase64,
-                mimeType: mimeType,
-            },
-        };
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-pro',
+        contents: [{ parts: [imagePart, textPart] }],
+        config: {
+            systemInstruction,
+            responseMimeType: 'application/json',
+            responseSchema: analysisSchema,
+        },
+    });
 
-        const systemInstruction = generateSystemInstruction(allergies, profile);
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: { parts: [imagePart, {text: "Please analyze the product in the image based on my profile."}] },
-            config: {
-                systemInstruction,
-                responseMimeType: 'application/json',
-                responseSchema: analysisSchema,
-            }
-        });
-
-        const jsonText = response.text.trim();
-        return JSON.parse(jsonText) as AnalysisResponse;
-
-    } catch (error) {
-        console.error("Error calling Gemini API for image analysis:", error);
-        throw new Error("Failed to get analysis from Gemini API.");
-    }
+    const jsonText = extractJson(response.text);
+    return JSON.parse(jsonText) as AnalysisResponse;
 };
 
-export const analyzeProductText = async (text: string, allergies: string[], profile: UserProfile): Promise<AnalysisResponse> => {
-    try {
-        const systemInstruction = generateSystemInstruction(allergies, profile)
-            .replace("فحص صور المنتجات", "فحص قوائم المكونات النصية")
-            .replace("المستخلص من الصورة", "المقدم في النص (إذا تم توفيره)");
+export const analyzeProductText = async (
+    text: string,
+    allergies: string[],
+    profile: UserProfile,
+    language: string
+): Promise<AnalysisResponse> => {
+    const systemInstruction = generateSystemInstruction(allergies, profile, language);
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: { parts: [{ text: `الرجاء تحليل قائمة المكونات التالية: ${text}` }] },
-            config: {
-                systemInstruction,
-                responseMimeType: 'application/json',
-                responseSchema: analysisSchema,
-            }
-        });
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{
+            parts: [{
+                text: `هذه هي قائمة المكونات: "${text}". قم بتحليل هذا المنتج. قم بتحليل المكونات بالكامل. قدم الإجابة بتنسيق JSON بناءً على المخطط المقدم.`
+            }]
+        }],
+        config: {
+            systemInstruction,
+            responseMimeType: 'application/json',
+            responseSchema: analysisSchema,
+        },
+    });
 
-        const jsonText = response.text.trim();
-        return JSON.parse(jsonText) as AnalysisResponse;
-
-    } catch (error) {
-        console.error("Error calling Gemini API for text analysis:", error);
-        throw new Error("Failed to get analysis from Gemini API.");
-    }
+    const jsonText = extractJson(response.text);
+    return JSON.parse(jsonText) as AnalysisResponse;
 };
 
 const comparisonSchema = {
     type: Type.OBJECT,
     properties: {
-        "recommendation": { type: Type.STRING, description: "توصية واضحة وموجزة، مع تحديد المنتج الأفضل للمستخدم بناءً على ملفه الشخصي وشرح السبب الرئيسي." },
-        "product1_name": { type: Type.STRING },
-        "product2_name": { type: Type.STRING },
+        "recommendation": { type: Type.STRING, description: "توصية نهائية واضحة حول أي منتج أفضل للمستخدم ولماذا، مع الأخذ في الاعتبار ملفه الشخصي وحساسياته." },
+        "product1_name": { type: Type.STRING, description: "اسم المنتج الأول." },
+        "product2_name": { type: Type.STRING, description: "اسم المنتج الثاني." },
         "product1_pros": { type: Type.ARRAY, items: { type: Type.STRING }, description: "قائمة بالإيجابيات الرئيسية للمنتج الأول." },
         "product1_cons": { type: Type.ARRAY, items: { type: Type.STRING }, description: "قائمة بالسلبيات الرئيسية للمنتج الأول." },
         "product2_pros": { type: Type.ARRAY, items: { type: Type.STRING }, description: "قائمة بالإيجابيات الرئيسية للمنتج الثاني." },
@@ -238,9 +258,9 @@ const comparisonSchema = {
             items: {
                 type: Type.OBJECT,
                 properties: {
-                    "feature": { type: Type.STRING, description: "الميزة التي تتم مقارنتها (مثل 'السلامة من مسببات الحساسية'، 'الملاءمة لنوع البشرة'، 'مكونات رئيسية')." },
-                    "product1_value": { type: Type.STRING, description: "تقييم الميزة للمنتج الأول." },
-                    "product2_value": { type: Type.STRING, description: "تقييم الميزة للمنتج الثاني." },
+                    "feature": { type: Type.STRING, description: "الميزة التي تتم مقارنتها (e.g., السعر, المكونات الرئيسية, الملاءمة لنوع البشرة)." },
+                    "product1_value": { type: Type.STRING, description: "قيمة الميزة للمنتج الأول." },
+                    "product2_value": { type: Type.STRING, description: "قيمة الميزة للمنتج الثاني." },
                 },
                 required: ["feature", "product1_value", "product2_value"]
             }
@@ -249,53 +269,45 @@ const comparisonSchema = {
     required: ["recommendation", "product1_name", "product2_name", "product1_pros", "product1_cons", "product2_pros", "product2_cons", "detailed_comparison"]
 };
 
-export const compareProducts = async (analysis1: AnalysisResponse, analysis2: AnalysisResponse, profile: UserProfile, allergies: string[]): Promise<ComparisonResponse> => {
-    try {
-        const systemInstruction = `أنت خبير في مقارنة المنتجات. مهمتك هي مقارنة بيانات تحليل منتجين (المنتج 1 والمنتج 2) وتقديم توصية مخصصة للمستخدم بناءً على ملفه الشخصي. كن موضوعيًا واستند إلى البيانات المقدمة. الإخراج يجب أن يكون كائن JSON نقي وصالح.`;
-        
-        const userContext = `
-            ملف المستخدم:
-            - الحساسية: ${allergies.join(', ') || 'لا يوجد'}
-            - نوع البشرة: ${profile.skinType || 'غير محدد'}
-            - التفضيلات الغذائية: ${profile.dietaryPreferences.join(', ') || 'لا يوجد'}
-            - الأهداف الصحية: ${profile.healthGoals.join(', ') || 'لا يوجد'}
-            - الاهتمامات الأخلاقية: ${profile.ethicalConcerns.join(', ') || 'لا يوجد'}
-        `;
+export const compareProducts = async (
+    product1Analysis: AnalysisResponse,
+    product2Analysis: AnalysisResponse,
+    profile: UserProfile,
+    allergies: string[],
+    language: string
+): Promise<ComparisonResponse> => {
+    const systemInstruction = `أنت خبير مقارنة منتجات. مهمتك هي مقارنة منتجين بناءً على تحليلاتهما وملف المستخدم الشخصي. قدم مقارنة موضوعية ومفصلة وساعد المستخدم على اتخاذ قرار مستنير. يجب أن يكون الإخراج كائن JSON نقي. هام جداً: يجب أن تكون جميع القيم النصية في JSON الناتج باللغة التالية: ${language}. يجب أن تظل مفاتيح JSON كما هي في المخطط.`;
+    
+    const prompt = `
+        قارن بين المنتجين التاليين لمستخدم لديه هذه المواصفات:
+        - الحساسية: ${allergies.join(', ') || 'لا يوجد'}
+        - الملف الشخصي: ${JSON.stringify(profile)}
 
-        const prompt = `
-            ${userContext}
+        المنتج الأول: ${JSON.stringify(product1Analysis)}
+        المنتج الثاني: ${JSON.stringify(product2Analysis)}
 
-            المنتج 1: ${JSON.stringify(analysis1)}
+        قدم مقارنة شاملة وأجب بتنسيق JSON بناءً على المخطط.
+    `;
 
-            المنتج 2: ${JSON.stringify(analysis2)}
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{ parts: [{ text: prompt }] }],
+        config: {
+            systemInstruction,
+            responseMimeType: 'application/json',
+            responseSchema: comparisonSchema,
+        },
+    });
 
-            بناءً على ما سبق، قم بإجراء مقارنة شاملة وأخرج النتيجة بتنسيق JSON المحدد.
-        `;
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: { parts: [{ text: prompt }] },
-            config: {
-                systemInstruction,
-                responseMimeType: 'application/json',
-                responseSchema: comparisonSchema,
-            }
-        });
-        
-        const jsonText = response.text.trim();
-        return JSON.parse(jsonText) as ComparisonResponse;
-
-    } catch (error) {
-        console.error("Error calling Gemini API for comparison:", error);
-        throw new Error("Failed to get comparison from Gemini API.");
-    }
+    const jsonText = extractJson(response.text);
+    return JSON.parse(jsonText) as ComparisonResponse;
 };
 
 const routineAnalysisSchema = {
     type: Type.OBJECT,
     properties: {
-        "overall_score": { type: Type.INTEGER, description: "تقييم شامل للروتين من 0 إلى 100 بناءً على التوافق والفعالية والسلامة." },
-        "overall_summary": { type: Type.STRING, description: "ملخص شامل لتحليل الروتين، يسلط الضوء على نقاط القوة والضعف الرئيسية." },
+        "overall_score": { type: Type.INTEGER, description: "تقييم رقمي من 0 إلى 100 لفعالية وتوافق الروتين." },
+        "overall_summary": { type: Type.STRING, description: "ملخص عام لتقييم الروتين، نقاط القوة والضعف." },
         "conflicts": {
             type: Type.ARRAY,
             items: {
@@ -303,238 +315,149 @@ const routineAnalysisSchema = {
                 properties: {
                     "product_1": { type: Type.STRING, description: "اسم المنتج الأول في التعارض." },
                     "product_2": { type: Type.STRING, description: "اسم المنتج الثاني في التعارض." },
-                    "reason": { type: Type.STRING, description: "شرح علمي لسبب تعارض المكونات بين المنتجين (e.g., Vitamin C and Niacinamide)." }
+                    "reason": { type: Type.STRING, description: "شرح علمي لسبب التعارض بين المكونات." },
                 },
                 required: ["product_1", "product_2", "reason"]
             }
         },
-        "suggested_order": {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-            description: "قائمة بأسماء المنتجات بالترتيب الأمثل للاستخدام (e.g., Cleanser, Toner, Serum, Moisturizer)."
-        },
-        "enhancement_suggestions": {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-            description: "قائمة بنصائح لتحسين الروتين (e.g., 'إضافة واقي شمسي في الصباح'، 'استخدام الريتينول في المساء فقط')."
-        }
+        "suggested_order": { type: Type.ARRAY, items: { type: Type.STRING }, description: "الترتيب المقترح لاستخدام المنتجات في الروتين لتحقيق أقصى استفادة." },
+        "enhancement_suggestions": { type: Type.ARRAY, items: { type: Type.STRING }, description: "قائمة اقتراحات لتحسين الروتين، مثل إضافة منتجات (e.g., واقي شمسي) أو إزالة منتجات زائدة عن الحاجة." }
     },
     required: ["overall_score", "overall_summary", "conflicts", "suggested_order", "enhancement_suggestions"]
 };
 
-export const analyzeRoutine = async (routineName: string, productAnalyses: AnalysisResponse[], profile: UserProfile): Promise<RoutineAnalysis> => {
-    try {
-        const systemInstruction = `أنت خبير في كيمياء العناية بالبشرة. مهمتك هي تحليل روتين العناية بالبشرة للمستخدم بناءً على قائمة المنتجات التي يستخدمها وملفه الشخصي. قم بتقييم توافق المنتجات، وتحديد أي تعارضات في المكونات، واقتراح الترتيب الأمثل للاستخدام، وتقديم توصيات للتحسين. يجب أن يكون الإخراج كائن JSON نقي وصالح.`;
-        
-        const userContext = `
-            ملف المستخدم:
-            - نوع البشرة: ${profile.skinType || 'غير محدد'}
-            - الاهتمامات: ${profile.healthGoals.join(', ') || 'لا يوجد'}
-        `;
+export const analyzeRoutine = async (
+    routineType: 'الصباحي' | 'المسائي',
+    productAnalyses: AnalysisResponse[],
+    profile: UserProfile,
+    language: string
+): Promise<RoutineAnalysis> => {
+    const systemInstruction = `أنت خبير في روتين العناية بالبشرة. مهمتك هي تحليل مجموعة من المنتجات المستخدمة في روتين معين. تحقق من وجود تعارضات بين المكونات، واقترح الترتيب الأمثل للاستخدام، وقدم نصائح لتحسين الروتين بناءً على ملف المستخدم. يجب أن يكون الإخراج كائن JSON نقي. هام جداً: يجب أن تكون جميع القيم النصية في JSON الناتج باللغة التالية: ${language}. يجب أن تظل مفاتيح JSON كما هي في المخطط.`;
+    
+    const prompt = `
+        حلل روتين العناية بالبشرة ${routineType} التالي لمستخدم لديه هذه المواصفات:
+        - الملف الشخصي: ${JSON.stringify(profile)}
 
-        const productDetails = productAnalyses.map(p => ({
-            name: p.اسم_المنتج,
-            category: p.فئة_المنتج,
-            positive_ingredients: p.المكونات_الإيجابية.map(i => i.الاسم_العلمي_او_الإنجليزي),
-            negative_ingredients: p.المكونات_السلبية.map(i => i.الاسم_العلمي_او_الإنجليزي)
-        }));
+        المنتجات في الروتين:
+        ${productAnalyses.map(p => `- ${p.اسم_المنتج}: ${p.ملخص_التحليل}`).join('\n')}
 
-        const prompt = `
-            ${userContext}
+        التحليلات الكاملة للمنتجات:
+        ${JSON.stringify(productAnalyses)}
 
-            الروتين المطلوب تحليله: ${routineName}
+        قم بتحليل هذا الروتين وأجب بتنسيق JSON بناءً على المخطط.
+    `;
 
-            تحليلات المنتجات في هذا الروتين:
-            ${JSON.stringify(productDetails)}
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-pro',
+        contents: [{ parts: [{ text: prompt }] }],
+        config: {
+            systemInstruction,
+            responseMimeType: 'application/json',
+            responseSchema: routineAnalysisSchema,
+        },
+    });
 
-            بناءً على ما سبق، قم بإجراء تحليل شامل للروتين وأخرج النتيجة بتنسيق JSON المحدد. ركز على التفاعلات بين المكونات النشطة مثل (Retinoids, Vitamin C, AHAs, BHAs, Niacinamide, Benzoyl Peroxide).
-        `;
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: { parts: [{ text: prompt }] },
-            config: {
-                systemInstruction,
-                responseMimeType: 'application/json',
-                responseSchema: routineAnalysisSchema,
-            }
-        });
-        
-        const jsonText = response.text.trim();
-        return JSON.parse(jsonText) as RoutineAnalysis;
-
-    } catch (error) {
-        console.error("Error calling Gemini API for routine analysis:", error);
-        throw new Error("Failed to get routine analysis from Gemini API.");
-    }
+    const jsonText = extractJson(response.text);
+    return JSON.parse(jsonText) as RoutineAnalysis;
 };
-
-
-// =================================================================================
-// Medication Analysis Service (NEW)
-// =================================================================================
 
 const medicationAnalysisSchema = {
     type: Type.OBJECT,
     properties: {
-        "drugName": { type: Type.STRING, description: "الاسم التجاري للدواء كما هو مكتوب على العلبة أو النشرة." },
-        "activeIngredients": { type: Type.ARRAY, items: { type: Type.STRING }, description: "قائمة بأسماء المكونات النشطة وتركيزها (e.g., 'Paracetamol 500mg')." },
-        "summary": { type: Type.STRING, description: "ملخص قصير جداً (جملة أو اثنتين) حول الاستخدام الرئيسي للدواء." },
-        "indications": { type: Type.ARRAY, items: { type: Type.STRING }, description: "قائمة بدواعي الاستعمال الرئيسية (لماذا يستخدم الدواء)." },
-        "dosage": { type: Type.STRING, description: "ملخص لطريقة الاستعمال والجرعة المعتادة للبالغين كما هو مذكور في النشرة." },
-        "sideEffects": { type: Type.ARRAY, items: { type: Type.STRING }, description: "قائمة بأهم الأعراض الجانبية الشائعة المذكورة." },
-        "warnings": { type: Type.ARRAY, items: { type: Type.STRING }, description: "قائمة بأهم التحذيرات والاحتياطات (مثل 'لا يستخدم أثناء الحمل')." }
+        "drugName": { type: Type.STRING, description: "الاسم التجاري للدواء." },
+        "activeIngredients": { type: Type.ARRAY, items: { type: Type.STRING }, description: "قائمة المكونات الفعالة." },
+        "summary": { type: Type.STRING, description: "ملخص سريع وموجز للدواء." },
+        "indications": { type: Type.ARRAY, items: { type: Type.STRING }, description: "قائمة بدواعي الاستعمال الرئيسية." },
+        "dosage": { type: Type.STRING, description: "الجرعة المعتادة وطريقة الاستخدام." },
+        "sideEffects": { type: Type.ARRAY, items: { type: Type.STRING }, description: "قائمة بالأعراض الجانبية الشائعة." },
+        "warnings": { type: Type.ARRAY, items: { type: Type.STRING }, description: "قائمة بأهم التحذيرات والاحتياطات." },
     },
     required: ["drugName", "activeIngredients", "summary", "indications", "dosage", "sideEffects", "warnings"]
 };
 
-
-const generateMedicationSystemInstruction = () => {
-    return `أنت مساعد معلوماتي متخصص في قراءة وتلخيص نشرات الأدوية. مهمتك هي استخلاص المعلومات الأساسية من صورة علبة دواء أو نشرة داخلية وتقديمها بتنسيق منظم.
+export const analyzeMedicationImage = async (
+    base64Data: string,
+    mimeType: string,
+    language: string
+): Promise<MedicationAnalysisResponse> => {
+    const systemInstruction = `أنت مساعد صيدلي ذكي. مهمتك هي استخلاص وتلخيص المعلومات الأساسية من صورة نشرة دواء. يجب أن تكون المعلومات دقيقة وموجزة وسهلة الفهم لغير المتخصصين. الإخراج يجب أن يكون كائن JSON نقي. لا تقدم نصيحة طبية، فقط لخص المعلومات الموجودة. هام جداً: يجب أن تكون جميع القيم النصية في JSON الناتج باللغة التالية: ${language}. يجب أن تظل مفاتيح JSON كما هي في المخطط.`;
     
-    **قواعد صارمة:**
-    1.  **ممنوع تقديم أي نصيحة طبية على الإطلاق.** لا تشخص، لا تقترح، لا تفسر الأعراض، ولا تقدم توصيات علاجية.
-    2.  **التزم بالنص المصور فقط.** قم باستخلاص وتلخيص المعلومات الموجودة في الصورة حرفياً. لا تضف أي معلومات خارجية غير موجودة في النشرة.
-    3.  **ركز على الحقائق.** استخرج اسم الدواء، المكونات، دواعي الاستعمال، الجرعة، الآثار الجانبية، والتحذيرات.
-    4.  **اللغة العربية الفصحى.** يجب أن تكون جميع المخرجات باللغة العربية الفصحى والواضحة.
-    5.  **الإخراج JSON فقط.** يجب أن يكون الإخراج النهائي عبارة عن كائن JSON نقي وصالح يتبع المخطط المحدد بدقة. لا تقم بتضمين أي نص إضافي، خاصة لا تضف تحذيرات نصية خارج بنية JSON. التحذير سيكون في واجهة المستخدم.
+    const imagePart = { inlineData: { data: base64Data, mimeType } };
+    const textPart = { text: "استخرج المعلومات الأساسية بدقة عالية من نشرة الدواء هذه، مع الانتباه للنصوص الصغيرة. لخصها بتنسيق JSON حسب المخطط المقدم. ركز على الاسم، المكونات، دواعي الاستعمال، الجرعة، الأعراض الجانبية، والتحذيرات." };
     
-    مهمتك هي فقط تحويل النص المعقد في النشرة إلى معلومات منظمة وسهلة القراءة. أنت أداة لتلخيص المعلومات، ولست بديلاً عن الطبيب أو الصيدلي.
-    `;
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-pro',
+        contents: [{ parts: [imagePart, textPart] }],
+        config: {
+            systemInstruction,
+            responseMimeType: 'application/json',
+            responseSchema: medicationAnalysisSchema,
+        },
+    });
+
+    const jsonText = extractJson(response.text);
+    return JSON.parse(jsonText) as MedicationAnalysisResponse;
 };
-
-
-export const analyzeMedicationImage = async (imageBase64: string, mimeType: string): Promise<MedicationAnalysisResponse> => {
-    try {
-        const imagePart = {
-            inlineData: {
-                data: imageBase64,
-                mimeType: mimeType,
-            },
-        };
-
-        const systemInstruction = generateMedicationSystemInstruction();
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: { parts: [imagePart, {text: "الرجاء استخلاص المعلومات الأساسية من هذا الدواء أو نشرته الداخلية."}] },
-            config: {
-                systemInstruction,
-                responseMimeType: 'application/json',
-                responseSchema: medicationAnalysisSchema,
-            }
-        });
-
-        const jsonText = response.text.trim();
-        return JSON.parse(jsonText) as MedicationAnalysisResponse;
-
-    } catch (error) {
-        console.error("Error calling Gemini API for medication analysis:", error);
-        throw new Error("Failed to get medication analysis from Gemini API.");
-    }
-};
-
-// =================================================================================
-// Meal Analysis Service (NEW)
-// =================================================================================
 
 const mealAnalysisSchema = {
     type: Type.OBJECT,
     properties: {
-        "mealName": { type: Type.STRING, description: "اسم وصفي للوجبة بناءً على محتوياتها (e.g., 'طبق دجاج مشوي مع أرز وخضروات')." },
+        "mealName": { type: Type.STRING, description: "اسم وصفي للوجبة، مثل 'طبق كشري مع السلطة'." },
         "estimatedCalories": {
             type: Type.OBJECT,
             properties: {
-                "value": { type: Type.INTEGER, description: "تقدير عدد السعرات الحرارية في الوجبة." },
-                "unit": { type: Type.STRING, description: "وحدة السعرات الحرارية (e.g., 'سعرة حرارية')." }
+                "value": { type: Type.INTEGER, description: "العدد التقريبي للسعرات الحرارية." },
+                "unit": { type: Type.STRING, description: "الوحدة، عادة 'سعرة حرارية'." },
             },
             required: ["value", "unit"]
         },
         "macronutrients": {
             type: Type.OBJECT,
             properties: {
-                "protein": { type: Type.STRING, description: "تقدير كمية البروتين بالجرام (e.g., '30g')." },
-                "carbohydrates": { type: Type.STRING, description: "تقدير كمية الكربوهيدرات بالجرام (e.g., '50g')." },
-                "fat": { type: Type.STRING, description: "تقدير كمية الدهون بالجرام (e.g., '15g')." }
+                "protein": { type: Type.STRING, description: "تقدير للبروتين بالجرام." },
+                "carbohydrates": { type: Type.STRING, description: "تقدير للكربوهيدرات بالجرام." },
+                "fat": { type: Type.STRING, description: "تقدير للدهون بالجرام." },
             },
             required: ["protein", "carbohydrates", "fat"]
         },
-        "identifiedFoods": { type: Type.ARRAY, items: { type: Type.STRING }, description: "قائمة بالأطعمة الرئيسية التي تم التعرف عليها في الوجبة." },
-        "healthSummary": { type: Type.STRING, description: "ملخص باللغة العربية حول مدى توافق هذه الوجبة مع الأهداف الصحية والتفضيلات الغذائية للمستخدم." },
-        "suggestions": { type: Type.ARRAY, items: { type: Type.STRING }, description: "قائمة بـ 2-3 اقتراحات لتحسين الوجبة أو جعلها صحية أكثر." }
+        "identifiedFoods": { type: Type.ARRAY, items: { type: Type.STRING }, description: "قائمة بالأطعمة والمكونات التي تم التعرف عليها في الصورة." },
+        "healthSummary": { type: Type.STRING, description: "ملخص صحي للوجبة، مع الأخذ في الاعتبار أهداف المستخدم الصحية." },
+        "suggestions": { type: Type.ARRAY, items: { type: Type.STRING }, description: "اقتراحات لجعل الوجبة صحية أكثر." },
     },
     required: ["mealName", "estimatedCalories", "macronutrients", "identifiedFoods", "healthSummary", "suggestions"]
 };
 
-const generateMealSystemInstruction = (profile: UserProfile) => {
-    let instruction = `أنت خبير تغذية ذكي. مهمتك هي تحليل صورة لوجبة طعام وتقديم تقرير غذائي تقديري ومفيد.
+export const analyzeMealImage = async (
+    base64Data: string,
+    mimeType: string,
+    profile: UserProfile,
+    language: string
+): Promise<MealAnalysisResponse> => {
+    const systemInstruction = `أنت خبير تغذية ذكي. مهمتك هي تحليل صورة لوجبة طعام. قم بتقدير السعرات الحرارية والمغذيات الكبرى، وتعرف على مكونات الوجبة، وقدم ملخصًا صحيًا واقتراحات للتحسين بناءً على أهداف المستخدم. الإخراج يجب أن يكون كائن JSON نقي. أكد دائمًا أن هذه تقديرات وليست قياسات دقيقة. هام جداً: يجب أن تكون جميع القيم النصية في JSON الناتج باللغة التالية: ${language}. يجب أن تظل مفاتيح JSON كما هي في المخطط.`;
     
-    **المهام:**
-    1.  **التعرف على الأطعمة:** حدد المكونات الرئيسية في طبق الطعام.
-    2.  **تقدير العناصر الغذائية:** قدر السعرات الحرارية والبروتين والكربوهيدرات والدهون. كن واضحًا بأن هذه تقديرات.
-    3.  **التحليل الصحي:** بناءً على ملف المستخدم، قدم ملخصًا حول مدى صحة هذه الوجبة بالنسبة له.
-    4.  **تقديم اقتراحات:** قدم نصائح عملية لتحسين الوجبة.
+    const imagePart = { inlineData: { data: base64Data, mimeType } };
+    const textPart = { text: `حلل هذه الوجبة لمستخدم أهدافه الصحية هي: ${profile.healthGoals.join(', ')}. قدم تحليلاً غذائياً تقديرياً بتنسيق JSON حسب المخطط.` };
+    
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{ parts: [imagePart, textPart] }],
+        config: {
+            systemInstruction,
+            responseMimeType: 'application/json',
+            responseSchema: mealAnalysisSchema,
+        },
+    });
 
-    **ملف المستخدم للتحليل:**
-    - التفضيلات الغذائية: ${profile.dietaryPreferences.join(', ') || 'لا يوجد'}
-    - الأهداف الصحية: ${profile.healthGoals.join(', ') || 'لا يوجد'}
-    
-    **قواعد صارمة:**
-    1.  **لا تقدم نصيحة طبية:** لا تشخص أي حالات صحية. تحليلك هو لأغراض معلوماتية فقط.
-    2.  **كن واقعيًا:** استخدم معرفتك الغذائية لتقديم تقديرات معقولة.
-    3.  **اللغة العربية الفصحى:** يجب أن تكون جميع المخرجات باللغة العربية.
-    4.  **الإخراج JSON فقط.** يجب أن يكون الإخراج النهائي عبارة عن كائن JSON نقي وصالح يتبع المخطط المحدد بدقة. لا تقم بتضمين أي نص إضافي.
-    `;
-    return instruction;
+    const jsonText = extractJson(response.text);
+    return JSON.parse(jsonText) as MealAnalysisResponse;
 };
 
-export const analyzeMealImage = async (imageBase64: string, mimeType: string, profile: UserProfile): Promise<MealAnalysisResponse> => {
-    try {
-        const imagePart = {
-            inlineData: {
-                data: imageBase64,
-                mimeType: mimeType,
-            },
-        };
-
-        const systemInstruction = generateMealSystemInstruction(profile);
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: { parts: [imagePart, {text: "الرجاء تحليل هذه الوجبة الغذائية بناءً على ملفي الشخصي."}] },
-            config: {
-                systemInstruction,
-                responseMimeType: 'application/json',
-                responseSchema: mealAnalysisSchema,
-            }
-        });
-
-        const jsonText = response.text.trim();
-        return JSON.parse(jsonText) as MealAnalysisResponse;
-
-    } catch (error) {
-        console.error("Error calling Gemini API for meal analysis:", error);
-        throw new Error("Failed to get meal analysis from Gemini API.");
-    }
-};
-
-export const createGeneralChat = (history: { role: string, parts: { text: string }[] }[] = []) => {
-    const systemInstruction = `أنت Hamed AI، مساعد ذكاء اصطناعي جزائري خبير في مجالات الصحة والجمال والعناية الشخصية. مهمتك هي الإجابة على أسئلة المستخدمين بطريقة ودودة، مفيدة، وعلمية مبسطة. تحدث باللهجة الجزائرية البيضاء (لهجة العاصمة) بشكل مهذب ومحترم.
-    
-    قواعد صارمة:
-    1.  **لا تقدم نصائح طبية:** لا تشخص الأمراض ولا تصف علاجات. يمكنك تقديم معلومات عامة حول الأدوية (مثل دواعي الاستعمال الشائعة) ولكن يجب أن تنصح المستخدم دائمًا باستشارة الطبيب أو الصيدلي. ابدأ دائمًا الإجابات المتعلقة بالصحة بـ "من المهم استشارة الطبيب، ولكن بشكل عام...".
-    2.  **كن دقيقًا علميًا:** استند في إجاباتك حول المكونات والمنتجات على معلومات علمية موثوقة.
-    3.  **شجع على نمط حياة صحي:** قدم نصائح عامة حول التغذية، الرياضة، والعناية بالبشرة.
-    4.  **كن إيجابيًا ومحفزًا:** استخدم نبرة إيجابية وشجع المستخدمين.
-    
-    مثال للتفاعل:
-    المستخدم: "ما هو أفضل مكون لمحاربة التجاعيد؟"
-    أنت: "أهلاً بك خويا/أختي. كاينة بزاف مكونات مليحة، لكن الريتينول (فيتامين A) يعتبر من أقوى المكونات المثبتة علميًا. يبدأ مفعوله بتحفيز الكولاجين ويجدد خلايا البشرة. كاين ثاني فيتامين C وحمض الهيالورونيك لي يساعدوا بزاف. كل بشرة وكيفاش، من الأحسن تبدا بتركيز خفيف وتشوف كيفاش تستجيب بشرتك."
-    `;
-    
+export const createGeneralChat = (history: any[]): Chat => {
     return ai.chats.create({
         model: 'gemini-2.5-flash',
-        config: { systemInstruction },
-        history
+        config: {
+            systemInstruction: `أنت Hamed AI، مساعد ذكي جزائري. مهمتك هي الإجابة على أسئلة المستخدم العامة المتعلقة بالصحة والجمال والتغذية. تحدث باللهجة الجزائرية البسيطة والمهذبة. كن متعاونًا وإيجابيًا، وقدم اقتراحات مفيدة. لا تقدم نصائح طبية مشخصة، بل قدم معلومات عامة.`,
+        },
+        history,
     });
 };

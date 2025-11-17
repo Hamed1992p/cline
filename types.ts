@@ -1,3 +1,9 @@
+export interface User {
+  name: string;
+  email: string;
+  picture?: string;
+}
+
 export interface UserProfile {
   skinType: string;
   dietaryPreferences: string[];

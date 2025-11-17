@@ -1,5 +1,6 @@
+
 import React, { useEffect } from 'react';
-import { ExclamationTriangleIcon, XCircleIcon } from './icons/ResultIcons';
+import { ExclamationTriangleIcon, XCircleIcon, CheckCircleIcon, InformationCircleIcon } from './icons/ResultIcons';
 
 interface NotificationProps {
   message: string;
@@ -22,7 +23,20 @@ const Notification: React.FC<NotificationProps> = ({ message, details, type, onC
       text: 'text-yellow-800 dark:text-yellow-300',
       title: 'text-yellow-900 dark:text-yellow-200 font-bold',
     },
-    // Can be extended with 'info' and 'success' types later
+    info: {
+      icon: <InformationCircleIcon className="h-6 w-6 text-blue-500" />,
+      bg: 'bg-blue-400/20 dark:bg-blue-800/30',
+      border: 'border-blue-500/50',
+      text: 'text-blue-800 dark:text-blue-300',
+      title: 'text-blue-900 dark:text-blue-200 font-bold',
+    },
+    success: {
+      icon: <CheckCircleIcon className="h-6 w-6 text-green-500" />,
+      bg: 'bg-green-400/20 dark:bg-green-800/30',
+      border: 'border-green-500/50',
+      text: 'text-green-800 dark:text-green-300',
+      title: 'text-green-900 dark:text-green-200 font-bold',
+    },
   };
 
   const currentTheme = theme[type];

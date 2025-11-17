@@ -1,19 +1,18 @@
-
-
-
 import React, { useState, useCallback, useEffect, ReactNode } from 'react';
-import { AnalysisResponse, UserProfile, ScanHistoryItem, ChatMessage, ComparisonResponse, Routine, RoutineProduct, RoutineAnalysis, MedicationAnalysisResponse, MealAnalysisResponse } from './types';
+import { AnalysisResponse, UserProfile, ScanHistoryItem, ChatMessage, ComparisonResponse, Routine, RoutineProduct, RoutineAnalysis, MedicationAnalysisResponse, MealAnalysisResponse, User } from './types';
 import { analyzeProductImage, analyzeProductText, compareProducts, analyzeRoutine, analyzeMedicationImage, analyzeMealImage, ai } from './services/geminiService';
 import { Chat } from '@google/genai';
 import ImageUploader from './components/ImageUploader';
 import AnalysisResult from './components/AnalysisResult';
 import { LogoIcon } from './components/icons/LogoIcon';
 import ThemeToggleButton from './components/ThemeToggleButton';
+import { ContrastIcon } from './components/icons/ThemeIcons';
 import AllergyManager from './components/AllergyManager';
 import { AllergyIcon } from './components/icons/AllergyIcon';
 import { UserProfileIcon, HistoryIcon } from './components/icons/DetailIcons';
 import { XCircleIcon, CheckCircleIcon } from './components/icons/ResultIcons';
-import { KeyboardIcon, ScaleIcon, BarcodeIcon, RoutineIcon, MicrophoneIcon, LiveAnalysisIcon, ScanTextIcon, MedicationIcon, QuestionIcon, FutureIcon, MealIcon, FeatherIcon } from './components/icons/ActionIcons';
+import { ScaleIcon, BarcodeIcon, RoutineIcon, MicrophoneIcon, LiveAnalysisIcon, ScanTextIcon, MedicationIcon, QuestionIcon, FutureIcon, MealIcon, FeatherIcon } from './components/icons/ActionIcons';
+import { SearchIcon } from './components/icons/SearchIcon';
 import { UploadIcon } from './components/icons/UploadIcon';
 import BarcodeScanner from './components/BarcodeScanner';
 import AudioRecorder from './components/AudioRecorder';
@@ -28,6 +27,12 @@ import GeneralChat from './components/GeneralChat';
 import Notification from './components/Notification';
 import FutureFeaturesModal from './components/FutureFeaturesModal';
 import InstallPWAButton from './components/InstallPWAButton';
+import { SettingsIcon } from './components/icons/SettingsIcon';
+import Settings from './components/Settings';
+import Search from './components/Search';
+import { BrainIcon } from './components/icons/BrainIcon';
+import LanguageSelector from './components/LanguageSelector';
+import Login from './components/Login';
 
 
 const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] => {
@@ -64,6 +69,8 @@ const DEFAULT_ROUTINE: Routine = {
     morning: [],
     evening: []
 };
+
+const DEFAULT_ALLERGIES: string[] = [];
 
 // =================================================================================
 // UserProfileManager Component
@@ -152,14 +159,13 @@ const UserProfileManager: React.FC<UserProfileManagerProps> = ({ isOpen, onClose
 interface ScanHistoryProps {
     history: ScanHistoryItem[];
     onSelect: (item: ScanHistoryItem) => void;
-    onClear: () => void;
     onClose: () => void;
     onCompare: (item1: ScanHistoryItem, item2: ScanHistoryItem) => void;
     selectionMode?: boolean;
     onAddToRoutine?: (items: ScanHistoryItem[]) => void;
 }
 
-const ScanHistory: React.FC<ScanHistoryProps> = ({ history, onSelect, onClear, onClose, onCompare, selectionMode = false, onAddToRoutine }) => {
+const ScanHistory: React.FC<ScanHistoryProps> = ({ history, onSelect, onClose, onCompare, selectionMode = false, onAddToRoutine }) => {
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
     const handleItemSelect = (id: string) => {
@@ -235,7 +241,6 @@ const ScanHistory: React.FC<ScanHistoryProps> = ({ history, onSelect, onClear, o
                                         <ScaleIcon className="w-5 h-5"/>
                                         مقارنة ({selectedItems.length}/2)
                                     </button>
-                                    <button onClick={onClear} className="bg-red-600/80 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700/80 transition-colors">مسح السجل</button>
                                 </>
                             )}
                         </div>
@@ -301,49 +306,40 @@ const EngagingLoader: React.FC<{isComparing?: boolean; isRoutine?: boolean; isBa
         const interval = setInterval(() => {
             index = (index + 1) % messages.length;
             setMessage(messages[index]);
-        }, 1500); // Faster interval for a snappier feel
+        }, 1500);
         return () => clearInterval(interval);
     }, [messages]);
 
     return (
-        <div className="w-full max-w-4xl p-4 sm:p-6 bg-slate-200/80 dark:bg-black/30 backdrop-blur-md rounded-2xl border border-slate-300/50 dark:border-gray-700/50 flex flex-col items-center justify-center space-y-6">
-            <div className="flex items-center justify-center space-x-3 h-20">
-                <div className="w-4 h-full bg-teal-400 rounded-full wave-bar [filter:drop-shadow(0_0_8px_theme(colors.teal.400))]" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-4 h-full bg-teal-400 rounded-full wave-bar [filter:drop-shadow(0_0_8px_theme(colors.teal.400))]" style={{ animationDelay: '0.2s' }}></div>
-                <div className="w-4 h-full bg-teal-400 rounded-full wave-bar [filter:drop-shadow(0_0_8px_theme(colors.teal.400))]" style={{ animationDelay: '0.3s' }}></div>
-                <div className="w-4 h-full bg-teal-400 rounded-full wave-bar [filter:drop-shadow(0_0_8px_theme(colors.teal.400))]" style={{ animationDelay: '0.4s' }}></div>
+        <div className="w-full max-w-4xl p-4 sm:p-6 bg-slate-200/80 dark:bg-black/30 backdrop-blur-md rounded-2xl border border-slate-300/50 dark:border-gray-700/50 flex flex-col items-center justify-center space-y-6 text-center">
+            <style>
+            {`
+                @keyframes orbit-loader {
+                    0% { transform: rotate(0deg) translateX(60px) rotate(0deg) scale(0.8); opacity: 0.5; }
+                    100% { transform: rotate(360deg) translateX(60px) rotate(-360deg) scale(1); opacity: 1; }
+                }
+                .orbit-particle {
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    width: 8px;
+                    height: 8px;
+                    margin-top: -4px;
+                    margin-left: -4px;
+                    border-radius: 50%;
+                    transform-origin: center;
+                    animation: orbit-loader 4s linear infinite;
+                }
+            `}
+            </style>
+            <div className="relative w-40 h-40 flex items-center justify-center">
+                <BrainIcon className="w-32 h-32 text-teal-400" />
+                <div className="orbit-particle bg-teal-400" style={{ animationDelay: '0s' }}></div>
+                <div className="orbit-particle bg-cyan-400" style={{ animationDelay: '-1s' }}></div>
+                <div className="orbit-particle bg-purple-400" style={{ animationDelay: '-2s' }}></div>
+                <div className="orbit-particle bg-blue-400" style={{ animationDelay: '-3s' }}></div>
             </div>
             <p className="text-lg text-gray-700 dark:text-teal-300 font-semibold transition-opacity duration-500">{message}</p>
-        </div>
-    );
-};
-
-// =================================================================================
-// ManualInput Component
-// =================================================================================
-interface ManualInputProps {
-    onAnalyzeClick: (text: string) => void;
-    isLoading: boolean;
-}
-const ManualInput: React.FC<ManualInputProps> = ({ onAnalyzeClick, isLoading }) => {
-    const [text, setText] = useState('');
-    return (
-        <div className="w-full max-w-2xl mx-auto p-6 sm:p-8 bg-slate-200/50 dark:bg-black/30 backdrop-blur-sm rounded-2xl border border-slate-300/50 dark:border-teal-500/20 shadow-xl dark:shadow-teal-900/40 flex flex-col items-center gap-6 transition-all duration-300">
-            <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300">أدخل المكونات يدويًا</h2>
-            <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder="مثال: Aqua, Glycerin, Sodium Hyaluronate..."
-                className="w-full h-48 p-3 bg-slate-50 dark:bg-black/20 border border-gray-400 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:text-white"
-                disabled={isLoading}
-            />
-            <button
-                onClick={() => onAnalyzeClick(text)}
-                disabled={isLoading || !text.trim()}
-                className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-teal-500 to-cyan-600 disabled:from-gray-500 disabled:to-gray-600 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-full transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-cyan-500/50 text-xl shadow-[0_0_15px_rgba(45,212,191,0.4),0_0_30px_rgba(45,212,191,0.2)] hover:shadow-[0_0_25px_rgba(45,212,191,0.6),0_0_50px_rgba(45,212,191,0.4)] active:translate-y-px"
-            >
-                {isLoading ? 'جاري التحليل...' : 'ابدأ التحليل'}
-            </button>
         </div>
     );
 };
@@ -568,21 +564,26 @@ const App: React.FC = () => {
   
   const [theme, setTheme] = useLocalStorage<'dark' | 'light'>('theme', 'dark');
   const [isLiteMode, setIsLiteMode] = useLocalStorage<boolean>('isLiteMode', false);
-  const [allergies, setAllergies] = useLocalStorage<string[]>('userAllergies', []);
+  const [isHighContrast, setIsHighContrast] = useLocalStorage<boolean>('isHighContrast', false);
+  const [allergies, setAllergies] = useLocalStorage<string[]>('userAllergies', DEFAULT_ALLERGIES);
   const [profile, setProfile] = useLocalStorage<UserProfile>('userProfile', DEFAULT_PROFILE);
   const [scanHistory, setScanHistory] = useLocalStorage<ScanHistoryItem[]>('scanHistory', []);
+  const [searchHistory, setSearchHistory] = useLocalStorage<string[]>('searchHistory', []);
   const [routines, setRoutines] = useLocalStorage<Routine>('userRoutines', DEFAULT_ROUTINE);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('Arabic');
+  const [user, setUser] = useLocalStorage<User | null>('hamed-ai-user', null);
 
   const [isAllergyModalOpen, setIsAllergyModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isRoutineManagerOpen, setIsRoutineManagerOpen] = useState(false);
   const [isFutureModalOpen, setIsFutureModalOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
   const [chat, setChat] = useState<Chat | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   
-  const [inputMode, setInputMode] = useState<'home' | 'image' | 'text' | 'barcode' | 'voice' | 'live' | 'scan-text' | 'medication' | 'general-chat' | 'meal'>('home');
+  const [inputMode, setInputMode] = useState<'home' | 'image' | 'search' | 'barcode' | 'voice' | 'live' | 'scan-text' | 'medication' | 'general-chat' | 'meal'>('home');
   const [isComparing, setIsComparing] = useState(false);
   const [comparisonResult, setComparisonResult] = useState<ComparisonResponse | null>(null);
   
@@ -608,8 +609,11 @@ const App: React.FC = () => {
     if (isLiteMode) {
         bodyClasses.push('lite-mode');
     }
+    if (isHighContrast) {
+        bodyClasses.push('high-contrast');
+    }
     document.body.className = bodyClasses.join(' ');
-  }, [theme, isLiteMode]);
+  }, [theme, isLiteMode, isHighContrast]);
   
   const handleImageSelect = (file: File) => {
     setImageFile(file);
@@ -698,7 +702,7 @@ const App: React.FC = () => {
 
     try {
       const base64Data = imageBase64.split(',')[1];
-      const result = await analyzeProductImage(base64Data, imageFile.type, allergies, profile);
+      const result = await analyzeProductImage(base64Data, imageFile.type, allergies, profile, selectedLanguage);
       processAnalysisResult(result, imageBase64);
     } catch (err) {
       console.error(err);
@@ -706,7 +710,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [imageFile, imageBase64, allergies, profile, processAnalysisResult]);
+  }, [imageFile, imageBase64, allergies, profile, selectedLanguage, processAnalysisResult]);
 
   const handleMedicationAnalyzeClick = useCallback(async () => {
     if (!imageFile || !imageBase64) {
@@ -719,7 +723,7 @@ const App: React.FC = () => {
 
     try {
       const base64Data = imageBase64.split(',')[1];
-      const result = await analyzeMedicationImage(base64Data, imageFile.type);
+      const result = await analyzeMedicationImage(base64Data, imageFile.type, selectedLanguage);
       setMedicationAnalysis(result);
     } catch (err) {
       console.error(err);
@@ -727,7 +731,7 @@ const App: React.FC = () => {
     } finally {
       setIsAnalyzingMedication(false);
     }
-  }, [imageFile, imageBase64]);
+  }, [imageFile, imageBase64, selectedLanguage]);
 
   const handleAnalyzeMeal = useCallback(async () => {
     if (!imageFile || !imageBase64) {
@@ -740,7 +744,7 @@ const App: React.FC = () => {
 
     try {
       const base64Data = imageBase64.split(',')[1];
-      const result = await analyzeMealImage(base64Data, imageFile.type, profile);
+      const result = await analyzeMealImage(base64Data, imageFile.type, profile, selectedLanguage);
       setMealAnalysis(result);
     } catch (err) {
       console.error(err);
@@ -748,7 +752,7 @@ const App: React.FC = () => {
     } finally {
       setIsAnalyzingMeal(false);
     }
-  }, [imageFile, imageBase64, profile]);
+  }, [imageFile, imageBase64, profile, selectedLanguage]);
 
 
   const handleTextAnalyzeClick = useCallback(async (text: string) => {
@@ -763,7 +767,7 @@ const App: React.FC = () => {
     setChatMessages([]);
 
     try {
-        const result = await analyzeProductText(text, allergies, profile);
+        const result = await analyzeProductText(text, allergies, profile, selectedLanguage);
         processAnalysisResult(result);
     } catch (err) {
         console.error(err);
@@ -771,7 +775,7 @@ const App: React.FC = () => {
     } finally {
         setIsLoading(false);
     }
-  }, [allergies, profile, processAnalysisResult]);
+  }, [allergies, profile, selectedLanguage, processAnalysisResult]);
   
    const handleBarcodeScanned = useCallback(async (barcode: string) => {
         setInputMode('image');
@@ -788,7 +792,7 @@ const App: React.FC = () => {
             if (!ingredientsText) throw new Error('No ingredient list found for this product.');
             
             const imageUrl = data.product.image_front_url || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-            const result = await analyzeProductText(ingredientsText, allergies, profile);
+            const result = await analyzeProductText(ingredientsText, allergies, profile, selectedLanguage);
             
             if (result.اسم_المنتج === 'غير واضح' && data.product.product_name) {
                 result.اسم_المنتج = data.product.product_name;
@@ -803,7 +807,7 @@ const App: React.FC = () => {
         } finally {
             setIsBarcodeLoading(false);
         }
-    }, [allergies, profile, processAnalysisResult]);
+    }, [allergies, profile, selectedLanguage, processAnalysisResult]);
 
 
   const handleSendMessage = useCallback(async (message: string) => {
@@ -836,7 +840,7 @@ const App: React.FC = () => {
     setIsComparing(true);
     setError(null);
     try {
-        const result = await compareProducts(item1.analysis, item2.analysis, profile, allergies);
+        const result = await compareProducts(item1.analysis, item2.analysis, profile, allergies, selectedLanguage);
         setComparisonResult(result);
     } catch (err) {
         console.error(err);
@@ -893,7 +897,7 @@ const App: React.FC = () => {
             throw new Error("لم يتم العثور على تحليل لبعض المنتجات في الروتين.");
         }
 
-        const result = await analyzeRoutine(routineType === 'morning' ? 'الصباحي' : 'المسائي', productAnalyses, profile);
+        const result = await analyzeRoutine(routineType === 'morning' ? 'الصباحي' : 'المسائي', productAnalyses, profile, selectedLanguage);
         setRoutineAnalysisResult(result);
 
     } catch (err) {
@@ -903,6 +907,47 @@ const App: React.FC = () => {
         setIsAnalyzingRoutine(false);
     }
  };
+
+  const clearHistory = () => {
+      if (window.confirm("هل أنت متأكد أنك تريد مسح كل سجل التحليلات؟ لا يمكن التراجع عن هذا الإجراء.")) {
+          setScanHistory([]);
+      }
+  };
+
+  const clearProfile = () => {
+      if (window.confirm("هل أنت متأكد أنك تريد إعادة تعيين ملفك الشخصي؟")) {
+          setProfile(DEFAULT_PROFILE);
+      }
+  };
+
+  const clearAllergies = () => {
+      if (window.confirm("هل أنت متأكد أنك تريد مسح كل الحساسيات المسجلة؟")) {
+          setAllergies(DEFAULT_ALLERGIES);
+      }
+  };
+
+  const resetAllData = () => {
+      if (window.confirm("تحذير! سيؤدي هذا إلى مسح كل بياناتك (السجل، الملف الشخصي، الحساسية) بشكل دائم. هل أنت متأكد أنك تريد المتابعة؟")) {
+          setScanHistory([]);
+          setProfile(DEFAULT_PROFILE);
+          setAllergies(DEFAULT_ALLERGIES);
+          setRoutines(DEFAULT_ROUTINE);
+          setSearchHistory([]);
+          localStorage.removeItem('generalChatHistory');
+          addNotification("تمت إعادة تعيين جميع البيانات بنجاح.", 'success');
+      }
+  };
+  
+  const updateSearchHistory = (term: string) => {
+    setSearchHistory(prev => {
+        const newHistory = [term, ...prev.filter(item => item !== term)];
+        return newHistory.slice(0, 10); // Keep only the last 10 searches
+    });
+  };
+
+  const removeSearchHistoryItem = (term: string) => {
+      setSearchHistory(prev => prev.filter(item => item !== term));
+  };
 
 
   const resetState = () => {
@@ -918,10 +963,11 @@ const App: React.FC = () => {
     setMealAnalysis(null);
   };
 
-  const handleSelectHistoryItem = (item: ScanHistoryItem) => {
+  const handleSelectAnalysis = (item: ScanHistoryItem) => {
     setImageBase64(item.image);
     setAnalysis(item.analysis);
     setIsHistoryOpen(false);
+    setInputMode('image');
     // Re-initiate chat for the selected old item
     const chatInstance = ai.chats.create({ 
         model: 'gemini-2.5-flash',
@@ -935,12 +981,6 @@ const App: React.FC = () => {
     setChatMessages([{role: 'model', content: `لقد عرضت تحليل "${item.analysis.اسم_المنتج}". كيف يمكنني المساعدة؟`}]);
   };
   
-  const clearHistory = () => {
-      if (window.confirm("هل أنت متأكد أنك تريد مسح كل سجل التحليلات؟ لا يمكن التراجع عن هذا الإجراء.")) {
-          setScanHistory([]);
-      }
-  };
-
   const closeAllModals = () => {
     setIsAllergyModalOpen(false);
     setIsProfileModalOpen(false);
@@ -949,6 +989,7 @@ const App: React.FC = () => {
     setComparisonResult(null);
     setRoutineAnalysisResult(null);
     setIsFutureModalOpen(false);
+    setIsSettingsOpen(false);
   };
 
   const handleVoiceCommand = (command: string) => {
@@ -959,10 +1000,10 @@ const App: React.FC = () => {
         closeAllModals();
     } else if (lowerCaseCommand.includes('صورة') || lowerCaseCommand.includes('كاميرا')) {
         setInputMode('image');
+    } else if (lowerCaseCommand.includes('بحث') || lowerCaseCommand.includes('search')) {
+        setInputMode('search');
     } else if (lowerCaseCommand.includes('امسح النص') || lowerCaseCommand.includes('سكان تيكست')) {
         setInputMode('scan-text');
-    } else if (lowerCaseCommand.includes('نص') || lowerCaseCommand.includes('يدوي')) {
-        setInputMode('text');
     } else if (lowerCaseCommand.includes('باركود')) {
         setInputMode('barcode');
     } else if (lowerCaseCommand.includes('صوت')) {
@@ -983,25 +1024,53 @@ const App: React.FC = () => {
         setIsAllergyModalOpen(true);
     } else if (lowerCaseCommand.includes('روتين')) {
         setIsRoutineManagerOpen(true);
+    } else if (lowerCaseCommand.includes('اعدادات') || lowerCaseCommand.includes('settings')) {
+        setIsSettingsOpen(true);
     } else if (lowerCaseCommand.includes('الرئيسية') || lowerCaseCommand.includes('home')) {
         resetState();
     }
   };
 
+  const handleLogin = () => {
+    setUser({
+        name: "زائر حامد",
+        email: "guest@hamed.ai",
+        picture: `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239ca3af'%3E%3Cpath fill-rule='evenodd' d='M18.685 19.097A9.723 9.723 0 0021.75 12c0-5.385-4.365-9.75-9.75-9.75S2.25 6.615 2.25 12a9.723 9.723 0 003.065 7.097A9.716 9.716 0 0012 21.75a9.716 9.716 0 006.685-2.653zm-12.54-1.285A7.486 7.486 0 0112 15a7.486 7.486 0 015.855 2.812A8.224 8.224 0 0112 20.25a8.224 8.224 0 01-5.855-2.438zM15.75 9a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z' clip-rule='evenodd' /%3E%3C/svg%3E`
+    });
+    addNotification("تم تسجيل الدخول بنجاح!", 'success');
+  };
+
+  const handleLogout = () => {
+      if (window.confirm("هل أنت متأكد أنك تريد تسجيل الخروج؟")) {
+          setUser(null);
+          addNotification("تم تسجيل الخروج.", 'info');
+      }
+  };
 
   let content: ReactNode;
   const modes = [
-    { id: 'image', icon: UploadIcon, label: 'منتج' },
-    { id: 'medication', icon: MedicationIcon, label: 'دواء' },
-    { id: 'meal', icon: MealIcon, label: 'وجبة' },
-    { id: 'general-chat', icon: QuestionIcon, label: 'اسأل حامد' },
-    { id: 'future', icon: FutureIcon, label: 'ميزات مستقبلية' },
-    { id: 'scan-text', icon: ScanTextIcon, label: 'مسح النص' },
-    { id: 'text', icon: KeyboardIcon, label: 'نص' },
-    { id: 'barcode', icon: BarcodeIcon, label: 'باركود' },
-    { id: 'voice', icon: MicrophoneIcon, label: 'صوتي' },
-    { id: 'live', icon: LiveAnalysisIcon, label: 'مباشر' }
+    { id: 'image', icon: UploadIcon, label: 'منتج', description: 'تحليل مكونات المنتج' },
+    { id: 'medication', icon: MedicationIcon, label: 'دواء', description: 'تلخيص نشرة الدواء' },
+    { id: 'meal', icon: MealIcon, label: 'وجبة', description: 'تقدير السعرات الحرارية' },
+    { id: 'general-chat', icon: QuestionIcon, label: 'اسأل حامد', description: 'دردشة عامة مع AI' },
+    { id: 'future', icon: FutureIcon, label: 'مستقبلي', description: 'اكتشف ما هو قادم' },
+    { id: 'scan-text', icon: ScanTextIcon, label: 'مسح النص', description: 'من الكاميرا' },
+    { id: 'search', icon: SearchIcon, label: 'بحث', description: 'البحث في السجل' },
+    { id: 'barcode', icon: BarcodeIcon, label: 'باركود', description: 'مسح سريع' },
+    { id: 'voice', icon: MicrophoneIcon, label: 'صوتي', description: 'إملاء المكونات' },
+    { id: 'live', icon: LiveAnalysisIcon, label: 'مباشر', description: 'تحليل فيديو مباشر' }
   ];
+
+  if (!user) {
+    return (
+        <div className="min-h-screen text-gray-800 dark:text-gray-100 flex flex-col items-center p-4 selection:bg-teal-500 selection:text-white">
+            {!isLiteMode && <StarfieldBackground />}
+             <main className="w-full flex-grow flex flex-col items-center justify-center">
+                 <Login onLogin={handleLogin} />
+            </main>
+        </div>
+    );
+  }
 
   if (isLoading || isComparing || isBarcodeLoading || isAnalyzingRoutine || isAnalyzingMedication || isAnalyzingMeal) {
       content = <EngagingLoader isComparing={isComparing} isRoutine={isAnalyzingRoutine} isBarcode={isBarcodeLoading} isMedication={isAnalyzingMedication} isMeal={isAnalyzingMeal} />;
@@ -1065,6 +1134,9 @@ const App: React.FC = () => {
                     &larr; العودة إلى القائمة الرئيسية
                 </button>
             </div>
+            {['image', 'medication', 'meal', 'scan-text', 'voice'].includes(inputMode) && (
+              <LanguageSelector selectedLanguage={selectedLanguage} onLanguageChange={setSelectedLanguage} />
+            )}
             {inputMode === 'image' && (
                 <ImageUploader 
                     onImageSelect={handleImageSelect}
@@ -1104,10 +1176,14 @@ const App: React.FC = () => {
                     isLoading={isLoading}
                 />
             )}
-            {inputMode === 'text' && (
-                <ManualInput
-                    onAnalyzeClick={handleTextAnalyzeClick}
-                    isLoading={isLoading}
+            {inputMode === 'search' && (
+                <Search
+                    onClose={() => setInputMode('home')}
+                    scanHistory={scanHistory}
+                    searchHistory={searchHistory}
+                    onSelectResult={handleSelectAnalysis}
+                    onUpdateSearchHistory={updateSearchHistory}
+                    onRemoveSearchHistoryItem={removeSearchHistoryItem}
                 />
             )}
             {inputMode === 'barcode' && (
@@ -1157,6 +1233,9 @@ const App: React.FC = () => {
                  <button onClick={() => setIsLiteMode(prev => !prev)} className={`p-2 rounded-full bg-slate-300/50 dark:bg-gray-700/50 hover:bg-slate-400/50 dark:hover:bg-gray-600/50 transition-colors ${isLiteMode ? 'text-teal-500' : 'text-gray-500'}`} aria-label="الوضع الخفيف">
                     <FeatherIcon className="w-6 h-6" />
                 </button>
+                <button onClick={() => setIsHighContrast(prev => !prev)} className={`p-2 rounded-full bg-slate-300/50 dark:bg-gray-700/50 hover:bg-slate-400/50 dark:hover:bg-gray-600/50 transition-colors ${isHighContrast ? 'text-yellow-400' : 'text-gray-500'}`} aria-label="وضع التباين العالي">
+                    <ContrastIcon className="w-6 h-6" />
+                </button>
                 <button onClick={() => setIsAllergyModalOpen(true)} className="p-2 rounded-full bg-slate-300/50 dark:bg-gray-700/50 text-red-600 dark:text-red-400 hover:bg-slate-400/50 dark:hover:bg-gray-600/50 transition-colors relative" aria-label="إدارة الحساسية">
                     <AllergyIcon className="w-6 h-6" />
                     {allergies.length > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">{allergies.length}</span>}
@@ -1167,20 +1246,31 @@ const App: React.FC = () => {
             </div>
             <div className="flex flex-col items-center cursor-pointer" onClick={resetState}>
               <div className="flex items-center justify-center gap-3 group">
-                <LogoIcon className="w-16 h-16 text-teal-600 dark:text-teal-400 [filter:drop-shadow(0_0_8px_theme(colors.teal.500))] transition-all duration-300 group-hover:[filter:drop-shadow(0_0_15px_theme(colors.teal.400))]" />
+                <BrainIcon className="w-16 h-16 text-teal-400 [filter:drop-shadow(0_0_12px_theme(colors.teal.500))] transition-all duration-300 group-hover:scale-105" />
                 <h1 className="text-5xl font-bold text-gray-800 dark:text-white transition-all duration-300 animate-[neon-flicker_4s_ease-in-out_infinite] group-hover:animate-none" style={{textShadow: `0 0 5px rgba(255, 255, 255, 0.8), 0 0 10px rgba(45, 212, 191, 0.8), 0 0 20px rgba(45, 212, 191, 0.6), 0 0 40px rgba(45, 212, 191, 0.4), 0 0 80px rgba(45, 212, 191, 0.2)`}}>
                   hamed Ai
                 </h1>
               </div>
               <p className="text-lg text-gray-600 dark:text-gray-400 mt-1">Lens of Health & Beauty</p>
             </div>
-            <div className="flex items-center gap-2">
-               <button onClick={() => setIsProfileModalOpen(true)} className="p-2 rounded-full bg-slate-300/50 dark:bg-gray-700/50 text-cyan-600 dark:text-cyan-400 hover:bg-slate-400/50 dark:hover:bg-gray-600/50 transition-colors" aria-label="الملف الشخصي">
-                    <UserProfileIcon className="w-6 h-6" />
+            <div className="flex items-center gap-3">
+                <div className="flex flex-col items-end hidden sm:flex">
+                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">مرحباً, {user.name}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">{user.email}</span>
+                </div>
+                <button onClick={() => setIsProfileModalOpen(true)} className="p-2 rounded-full bg-slate-300/50 dark:bg-gray-700/50 text-cyan-600 dark:text-cyan-400 hover:bg-slate-400/50 dark:hover:bg-gray-600/50 transition-colors" aria-label="الملف الشخصي">
+                   {user.picture ? (
+                        <img src={user.picture} alt={user.name} className="w-7 h-7 rounded-full object-cover" />
+                    ) : (
+                        <UserProfileIcon className="w-7 h-7" />
+                    )}
                 </button>
                 <button onClick={() => setIsHistoryOpen(true)} className="p-2 rounded-full bg-slate-300/50 dark:bg-gray-700/50 text-teal-600 dark:text-teal-400 hover:bg-slate-400/50 dark:hover:bg-gray-600/50 transition-colors relative" aria-label="سجل التحليلات">
                     <HistoryIcon className="w-6 h-6" />
                      {scanHistory.length > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-teal-500 text-xs font-bold text-white">{scanHistory.length}</span>}
+                </button>
+                 <button onClick={() => setIsSettingsOpen(true)} className="p-2 rounded-full bg-slate-300/50 dark:bg-gray-700/50 text-slate-600 dark:text-slate-400 hover:bg-slate-400/50 dark:hover:bg-gray-600/50 transition-colors" aria-label="الإعدادات">
+                    <SettingsIcon className="w-6 h-6" />
                 </button>
             </div>
           </header>
@@ -1198,11 +1288,26 @@ const App: React.FC = () => {
         
       <AllergyManager isOpen={isAllergyModalOpen} onClose={() => setIsAllergyModalOpen(false)} allergies={allergies} onAddAllergy={(allergy) => setAllergies([...allergies, allergy])} onRemoveAllergy={(allergy) => setAllergies(allergies.filter(a => a !== allergy))} />
       <UserProfileManager isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} profile={profile} setProfile={setProfile} />
-      {isHistoryOpen && <ScanHistory history={scanHistory} onSelect={handleSelectHistoryItem} onClear={clearHistory} onClose={() => {setIsHistoryOpen(false); setIsHistorySelectionMode(false);}} onCompare={handleCompare} selectionMode={isHistorySelectionMode} onAddToRoutine={handleAddToRoutine} />}
+      {isHistoryOpen && <ScanHistory history={scanHistory} onSelect={handleSelectAnalysis} onClose={() => {setIsHistoryOpen(false); setIsHistorySelectionMode(false);}} onCompare={handleCompare} selectionMode={isHistorySelectionMode} onAddToRoutine={handleAddToRoutine} />}
       {comparisonResult && <ComparisonResult data={comparisonResult} onClose={() => setComparisonResult(null)} />}
       <RoutineManager isOpen={isRoutineManagerOpen} onClose={() => setIsRoutineManagerOpen(false)} routine={routines} setRoutine={setRoutines} onOpenHistory={handleOpenHistoryForRoutine} onAnalyze={handleAnalyzeRoutine} />
       {routineAnalysisResult && <RoutineAnalysisResult data={routineAnalysisResult} onClose={() => setRoutineAnalysisResult(null)} />}
       <FutureFeaturesModal isOpen={isFutureModalOpen} onClose={() => setIsFutureModalOpen(false)} />
+      <Settings
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        theme={theme}
+        setTheme={(newTheme) => setTheme(newTheme)}
+        isLiteMode={isLiteMode}
+        setIsLiteMode={setIsLiteMode}
+        isHighContrast={isHighContrast}
+        setIsHighContrast={setIsHighContrast}
+        onClearHistory={clearHistory}
+        onClearProfile={clearProfile}
+        onClearAllergies={clearAllergies}
+        onResetAll={resetAllData}
+        onLogout={handleLogout}
+      />
       
       <VoiceControl onCommand={handleVoiceCommand} />
       <InstallPWAButton />

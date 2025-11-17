@@ -1,11 +1,12 @@
 import React from 'react';
-import { LogoIcon } from './icons/LogoIcon';
+import { BrainIcon } from './icons/BrainIcon';
 
 // Define props based on the `modes` array in App.tsx
 interface Mode {
     id: string;
     icon: React.FC<React.SVGProps<SVGSVGElement>>;
     label: string;
+    description: string;
 }
 
 interface HomePageProps {
@@ -13,81 +14,81 @@ interface HomePageProps {
     onModeSelect: (modeId: string) => void;
 }
 
-const colorMap: { [key: string]: { color: string; glowRgb: string } } = {
+const primaryColorMap: { [key: string]: { color: string; glowRgb: string } } = {
     image:        { color: '#22d3ee', glowRgb: '34, 211, 238' },   // cyan-400
     medication:   { color: '#60a5fa', glowRgb: '96, 165, 250' },   // blue-400
-    meal:         { color: '#f87171', glowRgb: '248, 113, 113' },  // red-400
+    meal:         { color: '#4ade80', glowRgb: '74, 222, 128' },   // green-400
     'general-chat': { color: '#818cf8', glowRgb: '129, 140, 248' }, // indigo-400
-    future:       { color: '#c084fc', glowRgb: '192, 132, 252' },   // purple-400
-    'scan-text':  { color: '#4ade80', glowRgb: '74, 222, 128' },   // green-400
-    text:         { color: '#fb923c', glowRgb: '251, 146, 60' },   // orange-400
+};
+
+const secondaryColorMap: { [key: string]: { color: string; glowRgb: string } } = {
+    'scan-text':  { color: '#34d399', glowRgb: '52, 211, 153' }, // emerald-400
+    search:       { color: '#fb923c', glowRgb: '251, 146, 60' },   // orange-400
     barcode:      { color: '#9ca3af', glowRgb: '156, 163, 175' },   // gray-400
     voice:        { color: '#fb7185', glowRgb: '251, 113, 133' },   // rose-400
     live:         { color: '#e11d48', glowRgb: '225, 29, 72' },     // rose-600
-};
+    future:       { color: '#c084fc', glowRgb: '192, 132, 252' },   // purple-400
+}
 
 
 const HomePage: React.FC<HomePageProps> = ({ modes, onModeSelect }) => {
     
-    const radius = 220; // Radius of the orbit
-
-    // Reorder modes to place 'future' at a specific visual position if desired
-    const sortedModes = [...modes];
-    const futureIndex = sortedModes.findIndex(m => m.id === 'future');
-    if (futureIndex > -1) {
-        const futureMode = sortedModes.splice(futureIndex, 1)[0];
-        sortedModes.splice(4, 0, futureMode); // Insert at 5th position
-    }
-
+    const primaryModes = modes.filter(m => Object.keys(primaryColorMap).includes(m.id));
+    const secondaryModes = modes.filter(m => Object.keys(secondaryColorMap).includes(m.id));
+    
     return (
         <div className="w-full h-full flex flex-col items-center justify-center animate-fade-in p-4">
-            <div className="constellation-container">
-                <div className="central-star">
-                    <div className="central-star-core">
-                        <LogoIcon className="w-20 h-20 text-teal-400" />
-                         <h1 className="text-2xl font-bold text-white mt-1">hamed Ai</h1>
-                    </div>
-                </div>
+             <div className="text-center">
+                <BrainIcon className="w-28 h-28 mx-auto text-teal-400 [filter:drop-shadow(0_0_15px_theme(colors.teal.400))]" />
+                <h1 className="text-5xl md:text-6xl font-bold text-white mt-4 animate-[text-glow_3s_ease-in-out_infinite]">
+                    Hamed AI
+                </h1>
+                <p className="mt-4 text-lg text-gray-400 max-w-2xl mx-auto">
+                    عدسة الصحة والجمال. ابدأ باختيار أداة أدناه.
+                </p>
+            </div>
 
-                {sortedModes.map((mode, index) => {
-                    const angle = (index / sortedModes.length) * 2 * Math.PI;
-                    const x = radius * Math.cos(angle);
-                    const y = radius * Math.sin(angle);
-                    const lineAngle = (Math.atan2(y, x) * 180 / Math.PI) + 90;
-                    
-                    const colors = colorMap[mode.id] || { color: '#94a3b8', glowRgb: '156, 163, 175' };
-
+            <div className="w-full max-w-4xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-12">
+                 {primaryModes.map(mode => {
+                    const colors = primaryColorMap[mode.id];
                     const style = {
-                        '--node-transform': `translate(${x}px, ${y}px)`,
-                        '--line-length': `${radius}px`,
-                        '--line-rotation': `${lineAngle}deg`,
                         '--node-color': colors.color,
                         '--node-glow-color-rgb': colors.glowRgb,
                     } as React.CSSProperties;
-
-                    const isFutureNode = mode.id === 'future';
-
                     return (
-                        <button
-                            key={mode.id}
-                            className="orbiting-node"
-                            style={style}
-                            onClick={() => onModeSelect(mode.id)}
-                            aria-label={mode.label}
-                        >
-                            <mode.icon className="node-icon" />
-                            <div className="node-label">{mode.label}</div>
-                            {isFutureNode && (
-                                <div className="absolute inset-0 border-2 border-purple-500 rounded-full animate-pulse" style={{ animationDuration: '3s' }}></div>
-                            )}
+                        <button key={mode.id} className="action-card col-span-1 h-full" style={style} onClick={() => onModeSelect(mode.id)}>
+                            <mode.icon className="action-card-icon" />
+                            <h3 className="action-card-title">{mode.label}</h3>
+                            <p className="action-card-desc">{mode.description}</p>
                         </button>
                     );
                 })}
             </div>
-            
-            <p className="mt-12 text-lg text-gray-400 dark:text-gray-500 animate-[subtle-pulse_3s_ease-in-out_infinite]">
-                أهلاً بك في المستقبل. اختر نجمًا للبدء.
-            </p>
+             
+             <div className="w-full max-w-4xl mt-8 pt-8 border-t border-gray-700/50">
+                 <h3 className="text-center text-xl font-semibold text-gray-400 mb-6">أدوات إضافية</h3>
+                 <div className="flex flex-wrap justify-center gap-4">
+                    {secondaryModes.map(mode => {
+                        const colors = secondaryColorMap[mode.id];
+                         const style = {
+                            '--node-color': colors.color,
+                            '--node-glow-color-rgb': colors.glowRgb,
+                        } as React.CSSProperties;
+                        const isFutureNode = mode.id === 'future';
+                        return (
+                            <button key={mode.id} className="relative flex flex-col items-center gap-2 group p-3 rounded-lg w-24 h-24 justify-center transition-colors hover:bg-white/5" style={style} onClick={() => onModeSelect(mode.id)}>
+                                <div className="w-12 h-12 flex items-center justify-center rounded-full bg-slate-800 border border-gray-700 group-hover:border-[var(--node-color)] group-hover:shadow-[0_0_10px_rgba(var(--node-glow-color-rgb),0.5)] transition-all">
+                                     <mode.icon className="w-6 h-6 text-gray-400 group-hover:text-[var(--node-color)] transition-colors" />
+                                </div>
+                                <span className="text-sm text-gray-300 group-hover:text-white transition-colors">{mode.label}</span>
+                                {isFutureNode && (
+                                    <div className="absolute inset-0 border border-purple-500 rounded-lg animate-pulse" style={{ animationDuration: '3s' }}></div>
+                                )}
+                            </button>
+                        );
+                    })}
+                 </div>
+             </div>
         </div>
     );
 };

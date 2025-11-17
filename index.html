@@ -56,19 +56,6 @@
         background-size: 2000px 100%;
       }
 
-      /* Constellation Homepage Styles */
-      @keyframes pulse {
-        0%, 100% { transform: scale(1); box-shadow: 0 0 15px 0px rgba(34, 211, 238, 0.3); }
-        50% { transform: scale(1.05); box-shadow: 0 0 25px 5px rgba(34, 211, 238, 0.5); }
-      }
-      @keyframes subtle-pulse {
-        0%, 100% { opacity: 0.7; }
-        50% { opacity: 1; }
-      }
-      @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-      }
       @keyframes slide-in-right {
         from {
           transform: translateX(100%);
@@ -82,143 +69,124 @@
       .animate-slide-in-right {
         animation: slide-in-right 0.5s ease-out forwards;
       }
-      .constellation-container {
-        position: relative;
-        width: 500px;
-        height: 500px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .central-star {
-        width: 150px;
-        height: 150px;
-        border-radius: 50%;
-        background: radial-gradient(circle, rgba(207, 250, 254, 1) 0%, rgba(34, 211, 238, 1) 40%, rgba(34, 211, 238, 0) 70%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-direction: column;
-        animation: pulse 4s ease-in-out infinite;
-        cursor: default;
-      }
-      .central-star-core {
-        width: 140px;
-        height: 140px;
-        border-radius: 50%;
-        background-color: #083344;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-direction: column;
-      }
-      .orbiting-node {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 70px;
-        height: 70px;
-        margin: -35px;
-        border-radius: 50%;
-        background-color: rgba(10, 30, 42, 0.8);
-        border: 2px solid rgba(34, 211, 238, 0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
+      
+      /* Mobile Homepage Styles */
+      .action-card {
+        background-color: rgba(10, 30, 42, 0.6);
+        border: 1px solid rgba(34, 211, 238, 0.2);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-radius: 1rem;
+        padding: 1.5rem 1rem;
+        text-align: center;
+        transition: all 0.3s ease-in-out;
         cursor: pointer;
-        transition: all 0.3s ease-in-out;
-        transform: var(--node-transform);
-        --node-color: #94a3b8; /* Default icon color */
-        --node-glow-color-rgb: 34, 211, 238; /* Default glow color (cyan) */
+        position: relative;
+        overflow: hidden;
       }
-      .orbiting-node::before { /* Connecting Line */
+      .action-card::before {
         content: '';
         position: absolute;
-        width: 2px;
-        height: var(--line-length);
-        background: linear-gradient(to top, rgba(34, 211, 238, 0.5), rgba(34, 211, 238, 0));
-        top: 50%;
-        left: 50%;
-        margin-left: -1px;
-        transform-origin: top;
-        transform: rotate(var(--line-rotation));
-        transition: all 0.3s ease-in-out;
-        z-index: -1;
-      }
-      .orbiting-node::after { /* Orbit Path on Hover */
-        content: '';
-        position: absolute;
-        width: 100px;
-        height: 100px;
-        border: 2px dashed rgba(34, 211, 238, 0.5);
-        border-radius: 50%;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(circle at 50% 0%, rgba(var(--node-glow-color-rgb), 0.25), transparent 70%);
         opacity: 0;
-        transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
-        animation: spin 20s linear infinite;
+        transition: opacity 0.3s ease-in-out;
+        transform: translateY(-50%);
       }
-      .orbiting-node:hover {
-        transform: var(--node-transform) scale(1.2);
-        background-color: rgba(var(--node-glow-color-rgb), 0.2);
+      .action-card:hover {
+        transform: translateY(-5px) scale(1.03);
         border-color: rgb(var(--node-glow-color-rgb));
-        box-shadow: 0 0 20px rgba(var(--node-glow-color-rgb), 0.7);
+        box-shadow: 0 0 25px rgba(var(--node-glow-color-rgb), 0.4);
       }
-      .orbiting-node:hover::before {
-        background: linear-gradient(to top, rgba(167, 243, 208, 1), rgba(34, 211, 238, 0));
-        box-shadow: 0 0 10px rgba(34, 211, 238, 0.7);
-      }
-      .orbiting-node:hover::after {
+      .action-card:hover::before {
         opacity: 1;
       }
-      .node-icon {
-        width: 32px;
-        height: 32px;
+      .action-card-icon {
+        width: 40px;
+        height: 40px;
+        margin: 0 auto 0.75rem;
         color: var(--node-color);
         transition: all 0.3s ease-in-out;
-      }
-      .orbiting-node:hover .node-icon {
-        color: white;
-        transform: scale(1.1);
         filter: drop-shadow(0 0 5px rgb(var(--node-glow-color-rgb)));
       }
-      .node-label {
-        position: absolute;
-        bottom: 120%;
+      .action-card:hover .action-card-icon {
+        transform: scale(1.1);
         color: white;
-        font-weight: 600;
-        background-color: rgba(2, 6, 23, 0.7);
-        padding: 4px 10px;
-        border-radius: 6px;
-        opacity: 0;
-        transform: translateY(10px);
-        transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
-        pointer-events: none;
-        white-space: nowrap;
       }
-      .orbiting-node:hover .node-label {
-        opacity: 1;
-        transform: translateY(0);
+      .action-card-title {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: white;
       }
+      .action-card-desc {
+        font-size: 0.875rem;
+        color: #cbd5e1; /* slate-300 */
+        margin-top: 0.25rem;
+      }
+      
       /* Lite Mode for Performance */
-      .lite-mode .central-star,
-      .lite-mode .orbiting-node,
       .lite-mode .node-icon,
-      .lite-mode .constellation-container,
       .lite-mode body,
       .lite-mode .animate-shimmer {
         transition: none !important;
         animation: none !important;
       }
-      .lite-mode .orbiting-node:hover {
-        transform: var(--node-transform) scale(1.15);
-        background-color: rgba(var(--node-glow-color-rgb), 0.15);
-        box-shadow: none;
+
+      /* High Contrast Mode Styles */
+      .high-contrast {
+        --hc-bg: #000000;
+        --hc-text: #FFFFFF;
+        --hc-accent: #FFFF00; /* Bright yellow for accents */
+        --hc-border: #FFFF00;
+        --hc-link: #00FFFF; /* Bright cyan for links */
       }
-      .lite-mode .orbiting-node:hover .node-icon {
-        filter: none;
+      .high-contrast body,
+      .high-contrast div, .high-contrast main, .high-contrast header, .high-contrast footer,
+      .high-contrast .dark\:bg-indigo-950, .high-contrast .bg-slate-100 {
+        background-color: var(--hc-bg) !important;
+        color: var(--hc-text) !important;
       }
-      .lite-mode .orbiting-node:hover::after {
-        opacity: 0;
+      .high-contrast *, .high-contrast *::before, .high-contrast *::after {
+        text-shadow: none !important;
+        box-shadow: none !important;
+        filter: none !important;
+        transition: none !important;
+        animation: none !important;
       }
+      .high-contrast [class*="backdrop-blur"] {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+      }
+      .high-contrast [class*="bg-slate-"], .high-contrast [class*="dark:bg-black"], .high-contrast [class*="dark:bg-gray-"], .high-contrast [class*="bg-white/"] {
+        background-color: transparent !important;
+        background-image: none !important;
+      }
+      .high-contrast [class*="text-gray-"], .high-contrast [class*="dark:text-gray-"], .high-contrast [class*="text-slate-"] { color: var(--hc-text) !important; }
+      .high-contrast [class*="text-teal-"], .high-contrast [class*="text-cyan-"], .high-contrast [class*="text-blue-"], .high-contrast [class*="text-purple-"], .high-contrast [class*="text-pink-"], .high-contrast [class*="text-indigo-"], .high-contrast [class*="text-yellow-"] { color: var(--hc-accent) !important; }
+      .high-contrast .text-green-600, .high-contrast .dark\:text-green-400 { color: #00FF00 !important; }
+      .high-contrast .text-red-600, .high-contrast .dark\:text-red-400 { color: #FF0000 !important; }
+      .high-contrast a { color: var(--hc-link) !important; text-decoration: underline !important; }
+      .high-contrast [class*="border-"], .high-contrast [class*="dark:border-"] { border-color: var(--hc-border) !important; }
+      .high-contrast header, .high-contrast .rounded-2xl { border: 2px solid var(--hc-border) !important; }
+      .high-contrast button, .high-contrast [role="button"] {
+        background-image: none !important;
+        background-color: transparent !important;
+        border: 2px solid var(--hc-accent) !important;
+        color: var(--hc-accent) !important;
+      }
+      .high-contrast button:disabled, .high-contrast [aria-disabled="true"] { border-color: #888888 !important; color: #888888 !important; opacity: 0.7; }
+      .high-contrast button[class*="bg-red-"] { border-color: #FF0000 !important; color: #FF0000 !important; }
+      .high-contrast .action-card { background-color: var(--hc-bg) !important; border: 2px solid var(--hc-border) !important; }
+      .high-contrast .action-card:hover { background-color: var(--hc-accent) !important; color: var(--hc-bg) !important; }
+      .high-contrast .action-card:hover .action-card-icon, .high-contrast .action-card:hover .action-card-title { color: var(--hc-bg) !important; }
+      .high-contrast .has-[:checked]:bg-cyan-500\/20 { background-color: rgba(255, 255, 0, 0.2) !important; }
+      .high-contrast input, .high-contrast textarea, .high-contrast select { background-color: var(--hc-bg) !important; border: 1px solid var(--hc-border) !important; color: var(--hc-text) !important; }
+      .high-contrast .bg-blue-500 { background: transparent !important; border: 2px solid var(--hc-link) !important; color: var(--hc-link) !important; }
+      .high-contrast #starfield-bg { display: none !important; }
+      .high-contrast .h-4.w-4 { border: 1px solid var(--hc-accent); }
     </style>
   <script type="importmap">
 {
