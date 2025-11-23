@@ -15,9 +15,10 @@ interface ItemCardProps {
     item: Ingredient | MarketingClaim;
     themeColor: string;
     allergies: string[];
+    index?: number;
 }
 
-const ItemCard: React.FC<ItemCardProps> = ({ item, themeColor, allergies }) => {
+const ItemCard: React.FC<ItemCardProps> = ({ item, themeColor, allergies, index = 0 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const isIngredient = 'الاسم_العربي' in item;
 
@@ -41,46 +42,64 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, themeColor, allergies }) => {
         ? (item as Ingredient).الوصف_والفوائد || (item as Ingredient).الوصف_والمخاطر || (item as Ingredient).الوصف_والتساؤلات
         : (item as MarketingClaim).التحليل_والتكذيب_العلمي;
 
-    const colorClasses = {
-        teal: { border: 'border-teal-500/60', text: 'text-teal-300' },
-        green: { border: 'border-green-500/60', text: 'text-green-300' },
-        pink: { border: 'border-pink-500/60', text: 'text-pink-300' },
+    // Define theme-based hover styles
+    const themeHoverStyles: Record<string, string> = {
+        teal: 'hover:border-teal-400 dark:hover:border-teal-500/50 hover:bg-teal-50 dark:hover:bg-teal-900/10 hover:shadow-[0_8px_30px_-12px_rgba(45,212,191,0.6)]',
+        green: 'hover:border-green-400 dark:hover:border-green-500/50 hover:bg-green-50 dark:hover:bg-green-900/10 hover:shadow-[0_8px_30px_-12px_rgba(74,222,128,0.6)]',
+        pink: 'hover:border-pink-400 dark:hover:border-pink-500/50 hover:bg-pink-50 dark:hover:bg-pink-900/10 hover:shadow-[0_8px_30px_-12px_rgba(244,114,182,0.6)]',
     };
-    const allergenClasses = {
-        border: 'border-red-500/80',
-        text: 'text-red-400',
-        shadow: 'shadow-md shadow-red-900/40 dark:shadow-[0_0_10px_rgba(239,68,68,0.4)]',
-        bg: 'bg-red-500/10 dark:bg-red-900/20'
+
+    const textColors: Record<string, string> = {
+        teal: 'text-teal-600 dark:text-teal-300',
+        green: 'text-green-600 dark:text-green-300',
+        pink: 'text-pink-600 dark:text-pink-300',
     };
+
+    const baseClasses = "rounded-lg border transition-all duration-300 ease-in-out transform hover:-translate-y-2 hover:scale-[1.02] animate-slide-up-fade shadow-sm hover:shadow-xl";
     
-    const currentTheme = isAllergen ? allergenClasses : (colorClasses[themeColor] || colorClasses.teal);
+    let containerClasses = "";
+    let titleColorClass = "";
+    let iconColorClass = "";
+
+    if (isAllergen) {
+        containerClasses = `${baseClasses} border-red-500/80 bg-red-500/10 dark:bg-red-900/20 shadow-md shadow-red-900/40 dark:shadow-[0_0_10px_rgba(239,68,68,0.4)] hover:bg-red-500/20 dark:hover:bg-red-900/30 hover:border-red-400 hover:shadow-[0_10px_40px_-12px_rgba(239,68,68,0.5)]`;
+        titleColorClass = "text-red-700 dark:text-red-400";
+        iconColorClass = "text-red-600 dark:text-red-400";
+    } else {
+        const hoverClass = themeHoverStyles[themeColor] || themeHoverStyles.teal;
+        containerClasses = `${baseClasses} border-slate-300 dark:border-gray-700 bg-slate-100/50 dark:bg-black/20 ${hoverClass}`;
+        titleColorClass = textColors[themeColor] || textColors.teal;
+    }
 
     return (
-        <div className={`rounded-lg border ${isAllergen ? `${allergenClasses.border} ${allergenClasses.shadow} ${allergenClasses.bg}` : 'border-slate-300 dark:border-gray-700 bg-slate-100/50 dark:bg-black/20'} transition-all duration-300`}>
+        <div 
+            className={containerClasses}
+            style={{ animationDelay: `${index * 80}ms` }}
+        >
             <button
-                className="w-full flex items-center justify-between p-4 text-right"
+                className="w-full flex items-center justify-between p-4 text-right group"
                 onClick={() => setIsOpen(!isOpen)}
                 aria-expanded={isOpen}
             >
                 <div className="flex items-center gap-3 text-left">
-                    {isAllergen && <ExclamationTriangleIcon className={`h-5 w-5 flex-shrink-0 ${allergenClasses.text}`} />}
-                    <h4 className={`text-lg font-semibold text-gray-800 ${isAllergen ? `dark:${allergenClasses.text}` : `dark:${currentTheme.text}`}`}>{title}</h4>
+                    {isAllergen && <ExclamationTriangleIcon className={`h-5 w-5 flex-shrink-0 ${iconColorClass}`} />}
+                    <h4 className={`text-lg font-semibold text-gray-800 dark:text-gray-100 group-hover:${titleColorClass} transition-colors duration-300`}>{title}</h4>
                 </div>
-                <ChevronDownIcon className={`w-5 h-5 flex-shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+                <ChevronDownIcon className={`w-5 h-5 flex-shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''} group-hover:text-gray-800 dark:group-hover:text-white`} />
             </button>
             <div
                 className={`overflow-hidden transition-[max-height] duration-500 ease-in-out ${isOpen ? 'max-h-[1000px]' : 'max-h-0'}`}
             >
                 <div className="px-4 pb-4 border-t border-slate-300/50 dark:border-gray-600/50">
                     {subTitle && <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 mb-2 font-mono">{subTitle}</p>}
-                    <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{description}</p>
+                    <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">{description}</p>
                     {item.مصادر_علمية && item.مصادر_علمية.length > 0 && (
                         <div className="mt-4">
-                            <h5 className="text-sm font-semibold text-gray-500 dark:text-gray-400">مصادر:</h5>
-                            <ul className="list-disc list-inside space-y-1 mt-1">
+                            <h5 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-1">مصادر:</h5>
+                            <ul className="list-disc list-inside space-y-1">
                                 {item.مصادر_علمية.map((source, index) => (
                                     <li key={index} className="text-xs text-blue-600 dark:text-blue-400 truncate">
-                                        <a href={source} target="_blank" rel="noopener noreferrer" className="hover:underline">{source}</a>
+                                        <a href={source} target="_blank" rel="noopener noreferrer" className="hover:underline transition-colors hover:text-blue-700 dark:hover:text-blue-300">{source}</a>
                                     </li>
                                 ))}
                             </ul>

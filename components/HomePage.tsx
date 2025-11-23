@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrainIcon } from './icons/BrainIcon';
 
@@ -39,8 +40,8 @@ const HomePage: React.FC<HomePageProps> = ({ modes, onModeSelect }) => {
     const secondaryModes = modes.filter(m => Object.keys(secondaryColorMap).includes(m.id));
     
     return (
-        <div className="w-full h-full flex flex-col items-center justify-center animate-fade-in p-4">
-             <div className="text-center">
+        <div className="w-full h-full flex flex-col items-center justify-center p-4">
+             <div className="text-center animate-fade-in">
                 <BrainIcon className="w-28 h-28 mx-auto text-teal-400 [filter:drop-shadow(0_0_15px_theme(colors.teal.400))]" />
                 <h1 className="text-5xl md:text-6xl font-bold text-white mt-4 animate-[text-glow_3s_ease-in-out_infinite]">
                     Hamed AI
@@ -51,14 +52,20 @@ const HomePage: React.FC<HomePageProps> = ({ modes, onModeSelect }) => {
             </div>
 
             <div className="w-full max-w-4xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-12">
-                 {primaryModes.map(mode => {
+                 {primaryModes.map((mode, index) => {
                     const colors = primaryColorMap[mode.id];
                     const style = {
                         '--node-color': colors.color,
                         '--node-glow-color-rgb': colors.glowRgb,
+                        animationDelay: `${index * 100}ms`
                     } as React.CSSProperties;
                     return (
-                        <button key={mode.id} className="action-card col-span-1 h-full" style={style} onClick={() => onModeSelect(mode.id)}>
+                        <button 
+                            key={mode.id} 
+                            className="action-card col-span-1 h-full animate-slide-up-fade active:scale-95" 
+                            style={style} 
+                            onClick={() => onModeSelect(mode.id)}
+                        >
                             <mode.icon className="action-card-icon" />
                             <h3 className="action-card-title">{mode.label}</h3>
                             <p className="action-card-desc">{mode.description}</p>
@@ -67,19 +74,25 @@ const HomePage: React.FC<HomePageProps> = ({ modes, onModeSelect }) => {
                 })}
             </div>
              
-             <div className="w-full max-w-5xl mt-8 pt-8 border-t border-gray-700/50">
+             <div className="w-full max-w-5xl mt-8 pt-8 border-t border-gray-700/50 animate-slide-up-fade" style={{animationDelay: '400ms'}}>
                  <h3 className="text-center text-xl font-semibold text-gray-400 mb-6">أدوات إضافية</h3>
                  <div className="flex flex-wrap justify-center gap-4">
-                    {secondaryModes.map(mode => {
+                    {secondaryModes.map((mode, index) => {
                         const colors = secondaryColorMap[mode.id];
                          const style = {
                             '--node-color': colors.color,
                             '--node-glow-color-rgb': colors.glowRgb,
+                            animationDelay: `${500 + index * 50}ms`
                         } as React.CSSProperties;
                         return (
-                            <button key={mode.id} className="relative flex flex-col items-center gap-2 group p-3 rounded-lg w-28 h-28 justify-center transition-colors hover:bg-white/5" style={style} onClick={() => onModeSelect(mode.id)}>
-                                <div className="w-12 h-12 flex items-center justify-center rounded-full bg-slate-800 border border-gray-700 group-hover:border-[var(--node-color)] group-hover:shadow-[0_0_10px_rgba(var(--node-glow-color-rgb),0.5)] transition-all">
-                                     <mode.icon className="w-6 h-6 text-gray-400 group-hover:text-[var(--node-color)] transition-colors" />
+                            <button 
+                                key={mode.id} 
+                                className="relative flex flex-col items-center gap-2 group p-3 rounded-lg w-28 h-28 justify-center transition-all duration-300 hover:bg-white/5 hover:scale-105 hover:-translate-y-1 active:scale-95 animate-slide-up-fade" 
+                                style={style} 
+                                onClick={() => onModeSelect(mode.id)}
+                            >
+                                <div className="w-12 h-12 flex items-center justify-center rounded-full bg-slate-800 border border-gray-700 group-hover:border-[var(--node-color)] group-hover:shadow-[0_0_15px_rgba(var(--node-glow-color-rgb),0.6)] transition-all duration-300">
+                                     <mode.icon className="w-6 h-6 text-gray-400 group-hover:text-[var(--node-color)] group-hover:scale-110 transition-all duration-300" />
                                 </div>
                                 <span className="text-sm text-center text-gray-300 group-hover:text-white transition-colors">{mode.label}</span>
                             </button>

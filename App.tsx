@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect, ReactNode } from 'react';
 import { AnalysisResponse, UserProfile, ScanHistoryItem, ChatMessage, ComparisonResponse, Routine, RoutineProduct, RoutineAnalysis, MedicationAnalysisResponse, MealAnalysisResponse, User, SkinPhoto, SkinAnalysisReport, WeeklyReportData, PriceComparisonResult } from './types';
 import { analyzeProductImage, analyzeProductText, compareProducts, analyzeRoutine, analyzeMedicationImage, analyzeMealImage, analyzeSkinProgress, generateWeeklyReport, findProductPrices, ai } from './services/geminiService';
@@ -671,13 +672,14 @@ const App: React.FC = () => {
       }
   }, [addNotification]);
   
-  const processAnalysisResult = useCallback((result: AnalysisResponse, image?: string) => {
+  const processAnalysisResult = useCallback((result: AnalysisResponse, image?: string, barcode?: string) => {
         setAnalysis(result);
         const newHistoryItem: ScanHistoryItem = {
             id: new Date().toISOString(),
             date: new Date().toLocaleDateString('ar-EG'),
             image: image || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', // Use a placeholder
-            analysis: result
+            analysis: result,
+            barcode: barcode
         };
         setScanHistory(prev => [newHistoryItem, ...prev.slice(0, 49)]);
         
@@ -804,7 +806,7 @@ const App: React.FC = () => {
                 result.اسم_المنتج = data.product.product_name;
             }
             
-            processAnalysisResult(result, imageUrl);
+            processAnalysisResult(result, imageUrl, barcode);
 
         } catch (err) {
             console.error(err);
@@ -1006,6 +1008,55 @@ const App: React.FC = () => {
   const handleVoiceCommand = (command: string) => {
     const lowerCaseCommand = command.toLowerCase().trim();
     console.log("Voice command received:", lowerCaseCommand);
+
+    // Enhanced Routine Commands
+    if ((lowerCaseCommand.includes('أضف') || lowerCaseCommand.includes('add')) && (lowerCaseCommand.includes('روتين') || lowerCaseCommand.includes('routine'))) {
+        const isMorning = lowerCaseCommand.includes('صباح') || lowerCaseCommand.includes('morning');
+        const isEvening = lowerCaseCommand.includes('مساء') || lowerCaseCommand.includes('evening');
+        
+        if (isMorning || isEvening) {
+            const routineType = isMorning ? 'morning' : 'evening';
+            // Find the item in history that matches the current analysis if available, otherwise just warn
+            if (!analysis) {
+                 addNotification("قم بتحليل منتج أولاً لإضافته.", 'warning');
+                 return;
+            }
+
+            const historyItem = scanHistory.find(item => item.analysis === analysis);
+            
+            if (historyItem) {
+                setRoutines(prev => {
+                    if (prev[routineType].some(p => p.id === historyItem.id)) {
+                        addNotification(`المنتج موجود بالفعل في الروتين ${isMorning ? 'الصباحي' : 'المسائي'}`, 'info');
+                        return prev;
+                    }
+                    addNotification(`تم إضافة ${analysis.اسم_المنتج} إلى الروتين ${isMorning ? 'الصباحي' : 'المسائي'}`, 'success');
+                    return {
+                        ...prev,
+                        [routineType]: [...prev[routineType], { id: historyItem.id, name: historyItem.analysis.اسم_المنتج, image: historyItem.image }]
+                    };
+                });
+            } else {
+                 addNotification("يجب حفظ المنتج في السجل أولاً.", 'warning');
+            }
+            return;
+        }
+    }
+
+    if ((lowerCaseCommand.includes('حلل') || lowerCaseCommand.includes('analyze')) && (lowerCaseCommand.includes('روتين') || lowerCaseCommand.includes('routine'))) {
+         const isMorning = lowerCaseCommand.includes('صباح') || lowerCaseCommand.includes('morning');
+         const isEvening = lowerCaseCommand.includes('مساء') || lowerCaseCommand.includes('evening');
+         
+         if (isMorning || isEvening) {
+             const type = isMorning ? 'morning' : 'evening';
+             if (routines[type].length < 2) {
+                 addNotification(`يجب أن يحتوي الروتين ${isMorning ? 'الصباحي' : 'المسائي'} على منتجين على الأقل للتحليل.`, 'warning');
+             } else {
+                 handleAnalyzeRoutine(type);
+             }
+             return;
+         }
+    }
 
     if (lowerCaseCommand.includes('اغلق') || lowerCaseCommand.includes('بلع')) {
         closeAllModals();

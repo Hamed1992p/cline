@@ -243,11 +243,11 @@ const AnalysisResult: React.FC<AnalysisResultProps> = ({ data, allergies, chatMe
               )
             })}
           </div>
-          <div className="rounded-b-lg animate-fade-in">
+          <div className="rounded-b-lg">
              {activeTabData && (
                 <div className="py-4 space-y-2">
                     {activeTabData.data.map((item, index) => (
-                        <ItemCard key={index} item={item} themeColor={themeColor} allergies={allergies} />
+                        <ItemCard key={index} item={item} themeColor={themeColor} allergies={allergies} index={index} />
                     ))}
                 </div>
              )}

@@ -1,3 +1,4 @@
+
 export interface User {
   name: string;
   email: string;
@@ -70,6 +71,7 @@ export interface ScanHistoryItem {
   date: string;
   image: string;
   analysis: AnalysisResponse;
+  barcode?: string;
 }
 
 export interface ComparisonPoint {

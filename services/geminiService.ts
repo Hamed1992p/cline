@@ -153,7 +153,7 @@ const analysisSchema = {
                 properties: {
                     "الادعاء_التسويقي": { type: Type.STRING },
                     "التحليل_والتكذيب_العلمي": { type: Type.STRING },
-                    "مصدر_علمية": { type: Type.ARRAY, items: { type: Type.STRING } }
+                    "مصادر_علمية": { type: Type.ARRAY, items: { type: Type.STRING } }
                 },
                 required: ["الادعاء_التسويقي", "التحليل_والتكذيب_العلمي", "مصادر_علمية"]
             }
@@ -204,7 +204,7 @@ export const analyzeProductImage = async (
     };
 
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
+        model: 'gemini-2.5-flash',
         contents: [{ parts: [imagePart, textPart] }],
         config: {
             systemInstruction,
@@ -348,7 +348,7 @@ export const analyzeRoutine = async (
     `;
 
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
+        model: 'gemini-2.5-flash',
         contents: [{ parts: [{ text: prompt }] }],
         config: {
             systemInstruction,
@@ -386,7 +386,7 @@ export const analyzeMedicationImage = async (
     const textPart = { text: "استخرج المعلومات الأساسية بدقة عالية من نشرة الدواء هذه، مع الانتباه للنصوص الصغيرة. لخصها بتنسيق JSON حسب المخطط المقدم. ركز على الاسم، المكونات، دواعي الاستعمال، الجرعة، الأعراض الجانبية، والتحذيرات." };
     
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
+        model: 'gemini-2.5-flash',
         contents: [{ parts: [imagePart, textPart] }],
         config: {
             systemInstruction,
@@ -485,7 +485,7 @@ export const analyzeSkinProgress = async (
     const imageParts = images.map(img => ({ inlineData: { data: img.data, mimeType: img.mimeType } }));
 
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
+        model: 'gemini-2.5-flash',
         contents: [{ parts: [
             ...imageParts,
             { text: `حلل التقدم المحرز في حالة البشرة بين هذه الصور. الصورة الأولى هي 'قبل' والأخيرة هي 'بعد'. ملف المستخدم الشخصي: نوع البشرة ${profile.skinType}. قدم تحليلك بتنسيق JSON.` }
